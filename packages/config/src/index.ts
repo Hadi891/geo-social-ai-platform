@@ -1,8 +1,16 @@
-export const theme = {
-  colors: {
-    primary: "#6D3DF5",
-    secondary: "#3BA7F6",
-    background: "#F5F5F7",
-    text: "#111111"
-  }
-};
+export const AWS_REGION = "eu-north-1";
+
+export const COGNITO_USER_POOL_ID =
+  process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID ||
+  process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID ||
+  "";
+
+export const COGNITO_CLIENT_ID =
+  process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ||
+  process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID ||
+  "";
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  "";
