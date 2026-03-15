@@ -2,7 +2,7 @@ import type { APIGatewayProxyEvent } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
-import { parseBody, isString } from "../utils/validation";
+import { parseBody, isUUID } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, tooManyRequests, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
@@ -14,7 +14,7 @@ export async function handleLike(event: APIGatewayProxyEvent) {
   if (!body) return badRequest("Invalid or missing request body");
 
   const { liked_user_id } = body;
-  if (!isString(liked_user_id)) return badRequest("liked_user_id is required");
+  if (!isUUID(liked_user_id)) return badRequest("liked_user_id must be a valid UUID");
 
   try {
     const userResult = await db.query(

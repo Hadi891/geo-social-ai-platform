@@ -15,14 +15,8 @@ export async function handleGetNearby(event: APIGatewayProxyEvent) {
 
   const params = event.queryStringParameters ?? {};
 
-  const radius = Math.min(
-    parseInt(params["radius"] ?? String(DEFAULT_RADIUS_M), 10) || DEFAULT_RADIUS_M,
-    MAX_RADIUS_M
-  );
-  const limit = Math.min(
-    parseInt(params["limit"] ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT,
-    MAX_LIMIT
-  );
+  const radius = Math.min(Math.max(parseInt(params["radius"] ?? "0", 10) || DEFAULT_RADIUS_M, 1), MAX_RADIUS_M);
+  const limit = Math.min(Math.max(parseInt(params["limit"] ?? "0", 10) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const offset = Math.max(parseInt(params["offset"] ?? "0", 10) || 0, 0);
 
   try {

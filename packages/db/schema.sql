@@ -107,6 +107,9 @@ ON matches(user_b);
 CREATE INDEX IF NOT EXISTS idx_messages_match_id
 ON messages(match_id);
 
+CREATE INDEX IF NOT EXISTS idx_match_reads_user_id
+ON match_reads(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_messages_created_at
 ON messages(created_at);
 

@@ -1,7 +1,7 @@
 import type { APIGatewayProxyEvent } from "aws-lambda";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
-import { parseBody, isString } from "../utils/validation";
+import { parseBody, isUUID } from "../utils/validation";
 import { ok, badRequest, unauthorized, notFound, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
@@ -18,7 +18,7 @@ export async function handlePostTyping(event: APIGatewayProxyEvent) {
   if (!body) return badRequest("Invalid or missing request body");
 
   const { match_id } = body;
-  if (!isString(match_id)) return badRequest("match_id is required");
+  if (!isUUID(match_id)) return badRequest("match_id must be a valid UUID");
 
   try {
     const userResult = await db.query(
@@ -54,7 +54,7 @@ export async function handleGetTyping(event: APIGatewayProxyEvent) {
 
   const params = event.queryStringParameters ?? {};
   const match_id = params["match_id"];
-  if (!match_id || !isString(match_id)) return badRequest("match_id query param is required");
+  if (!isUUID(match_id)) return badRequest("match_id must be a valid UUID");
 
   try {
     const userResult = await db.query(

@@ -2,7 +2,7 @@ import type { APIGatewayProxyEvent } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
-import { parseBody, isString } from "../utils/validation";
+import { parseBody, isString, isUUID, isValidTimestamp } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
@@ -35,7 +35,7 @@ async function sendMessage(event: APIGatewayProxyEvent) {
 
   const { match_id, message_text, message_type = "text" } = body;
 
-  if (!isString(match_id)) return badRequest("match_id is required");
+  if (!isUUID(match_id)) return badRequest("match_id must be a valid UUID");
   if (!isString(message_text)) return badRequest("message_text is required");
   if (!ALLOWED_MESSAGE_TYPES.includes(message_type)) {
     return badRequest(`message_type must be one of: ${ALLOWED_MESSAGE_TYPES.join(", ")}`);
@@ -81,9 +81,10 @@ async function getMessages(event: APIGatewayProxyEvent) {
   const params = (event.queryStringParameters ?? {}) as GetMessagesQuery;
   const { match_id, limit: limitStr, before } = params;
 
-  if (!match_id || !isString(match_id)) return badRequest("match_id query param is required");
+  if (!isUUID(match_id)) return badRequest("match_id must be a valid UUID");
+  if (before !== undefined && !isValidTimestamp(before)) return badRequest("before must be a valid ISO timestamp");
 
-  const limit = Math.min(parseInt(limitStr ?? "30", 10) || 30, 100);
+  const limit = Math.min(Math.max(parseInt(limitStr ?? "30", 10) || 30, 1), 100);
 
   try {
     const userResult = await db.query(
@@ -132,7 +133,7 @@ export async function handleMarkRead(event: APIGatewayProxyEvent) {
   if (!body) return badRequest("Invalid or missing request body");
 
   const { matchId } = body;
-  if (!isString(matchId)) return badRequest("matchId is required");
+  if (!isUUID(matchId)) return badRequest("matchId must be a valid UUID");
 
   try {
     const userResult = await db.query(
@@ -141,6 +142,14 @@ export async function handleMarkRead(event: APIGatewayProxyEvent) {
     );
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const userId: string = userResult.rows[0].id;
+
+    const matchResult = await db.query(
+      "SELECT id FROM matches WHERE id = $1 AND (user_a = $2 OR user_b = $2)",
+      [matchId, userId]
+    );
+    if (matchResult.rowCount === 0) {
+      return notFound("Match not found or you are not part of this match.");
+    }
 
     logInfo("/chat/read", { userId, matchId });
 

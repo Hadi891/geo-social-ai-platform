@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString } from "../utils/validation";
 import { ok, badRequest, unauthorized, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 const s3 = new S3Client({ region: process.env["AWS_REGION"] ?? "eu-north-1" });
 const BUCKET = process.env["S3_BUCKET"] ?? "";
@@ -46,9 +47,10 @@ export async function handleGetUploadUrl(event: APIGatewayProxyEvent) {
 
     const upload_url = await getSignedUrl(s3, command, { expiresIn: 300 });
 
+    logInfo("/upload-url", { sub: claims.sub, folder, key });
     return ok({ upload_url, key });
   } catch (err) {
-    console.error("handleGetUploadUrl error:", err);
+    logError("/upload-url", err, { sub: claims.sub });
     return internalError();
   }
 }
