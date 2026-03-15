@@ -6,6 +6,7 @@ import { handleChat, handleMarkRead } from "./src/handlers/chat";
 import { handleGetUploadUrl } from "./src/handlers/upload-url";
 import { handleLike, handleGetMatches } from "./src/handlers/likes";
 import { handlePostTyping, handleGetTyping } from "./src/handlers/typing";
+import { handleCreatePost, handleGetPosts, handleAddComment, handleGetComments, handleLikePost, handleUnlikePost } from "./src/handlers/posts";
 import { notFound, badRequest } from "./src/utils/response";
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -22,6 +23,12 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (method === "POST" && path === "/chat/read") return handleMarkRead(event);
   if (method === "POST" && path === "/chat/typing") return handlePostTyping(event);
   if (method === "GET" && path === "/chat/typing") return handleGetTyping(event);
+  if (method === "POST" && path === "/posts") return handleCreatePost(event);
+  if (method === "GET" && path === "/posts") return handleGetPosts(event);
+  if (method === "POST" && path === "/posts/comment") return handleAddComment(event);
+  if (method === "GET" && path === "/posts/comments") return handleGetComments(event);
+  if (method === "POST" && path === "/posts/like") return handleLikePost(event);
+  if (method === "DELETE" && path === "/posts/like") return handleUnlikePost(event);
 
   if (method === "OPTIONS") {
     return {
@@ -35,6 +42,6 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   }
 
-  if (method !== "GET" && method !== "POST") return badRequest("Method not allowed");
+  if (method !== "GET" && method !== "POST" && method !== "DELETE") return badRequest("Method not allowed");
   return notFound(`No route for ${method} ${path}`);
 }

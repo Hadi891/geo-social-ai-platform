@@ -85,6 +85,13 @@ CREATE TABLE IF NOT EXISTS post_comments (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS post_likes (
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (post_id, user_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_locations_geom
 ON locations
 USING GIST (geom);
@@ -127,6 +134,12 @@ ON post_comments(author_id);
 
 CREATE INDEX IF NOT EXISTS idx_post_comments_created_at
 ON post_comments(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_post_likes_post_id
+ON post_likes(post_id);
+
+CREATE INDEX IF NOT EXISTS idx_post_likes_user_id
+ON post_likes(user_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS one_profile_photo_per_user
 ON photos(user_id)
