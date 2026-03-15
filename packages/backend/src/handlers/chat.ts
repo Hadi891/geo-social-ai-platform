@@ -80,7 +80,7 @@ async function getMessages(event: APIGatewayProxyEvent) {
 
   if (!match_id || !isString(match_id)) return badRequest("match_id query param is required");
 
-  const limit = Math.min(parseInt(limitStr ?? "50", 10) || 50, 100);
+  const limit = Math.min(parseInt(limitStr ?? "30", 10) || 30, 100);
 
   try {
     const userResult = await db.query(
@@ -102,10 +102,10 @@ async function getMessages(event: APIGatewayProxyEvent) {
       `SELECT id, match_id, sender_id, message_text, message_type, created_at
        FROM messages
        WHERE match_id = $1
-         ${before ? "AND created_at < $3" : ""}
+         AND ($2::timestamp IS NULL OR created_at < $2)
        ORDER BY created_at DESC
-       LIMIT $2`,
-      before ? [match_id, limit, before] : [match_id, limit]
+       LIMIT $3`,
+      [match_id, before ?? null, limit]
     );
 
     return ok({

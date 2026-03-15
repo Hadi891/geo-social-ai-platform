@@ -33,6 +33,10 @@ export function notFound(message = "Not found"): LambdaResponse {
   return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: message }) };
 }
 
+export function tooManyRequests(message = "Too many requests"): LambdaResponse {
+  return { statusCode: 429, headers: HEADERS, body: JSON.stringify({ error: message }) };
+}
+
 export function internalError(): LambdaResponse {
   return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: "Internal server error" }) };
 }

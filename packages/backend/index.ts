@@ -4,6 +4,8 @@ import { handleUpdateLocation } from "./src/handlers/location";
 import { handleGetNearby } from "./src/handlers/nearby";
 import { handleChat } from "./src/handlers/chat";
 import { handleGetUploadUrl } from "./src/handlers/upload-url";
+import { handleLike, handleGetMatches } from "./src/handlers/likes";
+import { handlePostTyping, handleGetTyping } from "./src/handlers/typing";
 import { notFound, badRequest } from "./src/utils/response";
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -15,6 +17,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (method === "GET" && path === "/nearby") return handleGetNearby(event);
   if (path === "/chat") return handleChat(event);
   if (method === "POST" && path === "/upload-url") return handleGetUploadUrl(event);
+  if (method === "POST" && path === "/like") return handleLike(event);
+  if (method === "GET" && path === "/matches") return handleGetMatches(event);
+  if (method === "POST" && path === "/chat/typing") return handlePostTyping(event);
+  if (method === "GET" && path === "/chat/typing") return handleGetTyping(event);
 
   if (method === "OPTIONS") {
     return {

@@ -22,6 +22,7 @@ export async function handleGetNearby(event: APIGatewayProxyEvent) {
     parseInt(params["limit"] ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT,
     MAX_LIMIT
   );
+  const offset = Math.max(parseInt(params["offset"] ?? "0", 10) || 0, 0);
 
   try {
     const userResult = await db.query(
@@ -59,13 +60,25 @@ export async function handleGetNearby(event: APIGatewayProxyEvent) {
        LEFT JOIN photos p ON p.user_id = u.id AND p.is_profile_photo = TRUE
        WHERE l.user_id <> $1
          AND ST_DWithin(l.geom, $2::geography, $3)
+         AND l.user_id NOT IN (
+           SELECT liked_user_id FROM likes WHERE user_id = $1
+         )
+         AND l.user_id NOT IN (
+           SELECT user_id FROM likes WHERE liked_user_id = $1
+         )
+         AND l.user_id NOT IN (
+           SELECT CASE WHEN user_a = $1 THEN user_b ELSE user_a END
+           FROM matches WHERE user_a = $1 OR user_b = $1
+         )
        ORDER BY l.geom <-> $2::geography
-       LIMIT $4`,
-      [userId, myGeom, radius, limit]
+       LIMIT $4 OFFSET $5`,
+      [userId, myGeom, radius, limit, offset]
     );
 
     return ok({
       radius_m: radius,
+      limit,
+      offset,
       count: nearbyResult.rows.length,
       users: nearbyResult.rows,
     });

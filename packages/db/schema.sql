@@ -82,8 +82,14 @@ CREATE INDEX IF NOT EXISTS idx_locations_geom
 ON locations
 USING GIST (geom);
 
+CREATE INDEX IF NOT EXISTS idx_likes_user_id
+ON likes(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_likes_liked_user_id
 ON likes(liked_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_likes_created_at
+ON likes(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_matches_user_a
 ON matches(user_a);
