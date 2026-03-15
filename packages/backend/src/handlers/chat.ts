@@ -123,3 +123,38 @@ async function getMessages(event: APIGatewayProxyEvent) {
     return internalError();
   }
 }
+
+export async function handleMarkRead(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ matchId: string }>(event.body);
+  if (!body) return badRequest("Invalid or missing request body");
+
+  const { matchId } = body;
+  if (!isString(matchId)) return badRequest("matchId is required");
+
+  try {
+    const userResult = await db.query(
+      "SELECT id FROM users WHERE cognito_sub = $1",
+      [claims.sub]
+    );
+    if (userResult.rowCount === 0) return notFound("User profile not found.");
+    const userId: string = userResult.rows[0].id;
+
+    logInfo("/chat/read", { userId, matchId });
+
+    await db.query(
+      `INSERT INTO match_reads (match_id, user_id, last_read_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (match_id, user_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      [matchId, userId]
+    );
+
+    return ok({ ok: true });
+  } catch (err) {
+    logError("/chat/read", err, { sub: claims.sub });
+    return internalError();
+  }
+}

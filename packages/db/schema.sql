@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS match_reads (
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    last_read_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (match_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS posts (
     id UUID PRIMARY KEY,
     author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
