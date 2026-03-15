@@ -7,6 +7,7 @@ import { handleGetUploadUrl } from "./src/handlers/upload-url";
 import { handleLike, handleGetMatches } from "./src/handlers/likes";
 import { handlePostTyping, handleGetTyping } from "./src/handlers/typing";
 import { handleCreatePost, handleGetPosts, handleAddComment, handleGetComments, handleLikePost, handleUnlikePost } from "./src/handlers/posts";
+import { handleCreateStory, handleGetUserStories, handleGetStoriesFeed, handleViewStory, handleDeleteStory } from "./src/handlers/stories";
 import { notFound, badRequest } from "./src/utils/response";
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -29,6 +30,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (method === "GET" && path === "/posts/comments") return handleGetComments(event);
   if (method === "POST" && path === "/posts/like") return handleLikePost(event);
   if (method === "DELETE" && path === "/posts/like") return handleUnlikePost(event);
+  if (method === "POST" && path === "/stories") return handleCreateStory(event);
+  if (method === "GET" && path === "/stories") return handleGetUserStories(event);
+  if (method === "GET" && path === "/stories/feed") return handleGetStoriesFeed(event);
+  if (method === "POST" && path === "/stories/view") return handleViewStory(event);
+  if (method === "DELETE" && path === "/stories") return handleDeleteStory(event);
 
   if (method === "OPTIONS") {
     return {

@@ -141,6 +141,36 @@ ON post_likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_post_likes_user_id
 ON post_likes(user_id);
 
+CREATE TABLE IF NOT EXISTS stories (
+    id UUID PRIMARY KEY,
+    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    media_url TEXT NOT NULL,
+    media_type TEXT NOT NULL,
+    caption TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP NOT NULL,
+    CHECK (media_type IN ('image', 'video'))
+);
+
+CREATE TABLE IF NOT EXISTS story_views (
+    story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    viewer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (story_id, viewer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stories_author_id
+ON stories(author_id);
+
+CREATE INDEX IF NOT EXISTS idx_stories_created_at
+ON stories(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_stories_expires_at
+ON stories(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_story_views_viewer_id
+ON story_views(viewer_id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS one_profile_photo_per_user
 ON photos(user_id)
 WHERE is_profile_photo = TRUE;
