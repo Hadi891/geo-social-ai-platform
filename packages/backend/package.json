@@ -1,0 +1,22 @@
+{
+  "name": "@geo-social-ai/backend",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0",
+    "@aws-sdk/s3-request-presigner": "^3.1009.0",
+    "pg": "^8.11.5",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/pg": "^8.11.10",
+    "@types/uuid": "^10.0.0"
+  }
+}
