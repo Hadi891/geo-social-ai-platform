@@ -3,6 +3,7 @@ import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString } from "../utils/validation";
 import { ok, badRequest, unauthorized, notFound, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 // { matchId: { userId: timestampMs } }
 const typingStates: Record<string, Record<string, number>> = {};
@@ -35,12 +36,14 @@ export async function handlePostTyping(event: APIGatewayProxyEvent) {
       return notFound("Match not found or you are not part of this match.");
     }
 
+    logInfo("/chat/typing", { userId, matchId: match_id });
+
     if (!typingStates[match_id]) typingStates[match_id] = {};
     typingStates[match_id][userId] = Date.now();
 
     return ok({ ok: true });
   } catch (err) {
-    console.error("handlePostTyping error:", err);
+    logError("/chat/typing", err, { sub: claims.sub });
     return internalError();
   }
 }
@@ -61,6 +64,8 @@ export async function handleGetTyping(event: APIGatewayProxyEvent) {
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const userId: string = userResult.rows[0].id;
 
+    logInfo("/chat/typing", { userId, matchId: match_id });
+
     const matchResult = await db.query(
       "SELECT id FROM matches WHERE id = $1 AND (user_a = $2 OR user_b = $2)",
       [match_id, userId]
@@ -77,7 +82,7 @@ export async function handleGetTyping(event: APIGatewayProxyEvent) {
 
     return ok({ match_id, typing_user_ids });
   } catch (err) {
-    console.error("handleGetTyping error:", err);
+    logError("/chat/typing", err, { sub: claims.sub });
     return internalError();
   }
 }

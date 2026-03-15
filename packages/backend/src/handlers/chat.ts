@@ -4,6 +4,7 @@ import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 type SendMessageBody = {
   match_id: string;
@@ -48,6 +49,8 @@ async function sendMessage(event: APIGatewayProxyEvent) {
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const userId: string = userResult.rows[0].id;
 
+    logInfo("/chat", { userId, matchId: match_id, messageType: message_type });
+
     // Verify user is part of the match (returns nothing if not)
     const matchResult = await db.query(
       "SELECT id FROM matches WHERE id = $1 AND (user_a = $2 OR user_b = $2)",
@@ -66,7 +69,7 @@ async function sendMessage(event: APIGatewayProxyEvent) {
 
     return created(result.rows[0]);
   } catch (err) {
-    console.error("sendMessage error:", err);
+    logError("/chat", err, { sub: claims.sub });
     return internalError();
   }
 }
@@ -89,6 +92,8 @@ async function getMessages(event: APIGatewayProxyEvent) {
     );
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const userId: string = userResult.rows[0].id;
+
+    logInfo("/chat", { userId, matchId: match_id, limit, before: before ?? null });
 
     const matchResult = await db.query(
       "SELECT id FROM matches WHERE id = $1 AND (user_a = $2 OR user_b = $2)",
@@ -114,7 +119,7 @@ async function getMessages(event: APIGatewayProxyEvent) {
       messages: result.rows.reverse(), // oldest first
     });
   } catch (err) {
-    console.error("getMessages error:", err);
+    logError("/chat", err, { sub: claims.sub });
     return internalError();
   }
 }

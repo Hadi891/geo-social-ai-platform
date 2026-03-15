@@ -4,6 +4,7 @@ import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString, isInt } from "../utils/validation";
 import { created, badRequest, unauthorized, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 type CreateUserBody = {
   name?: string;
@@ -31,6 +32,8 @@ export async function handleCreateUser(event: APIGatewayProxyEvent) {
   }
 
   try {
+    logInfo("/users", { sub: claims.sub, email: claims.email });
+
     const result = await db.query(
       `INSERT INTO users (id, cognito_sub, email, name, age, bio, gender, sexual_orientation, interests, introversion_score)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -60,7 +63,7 @@ export async function handleCreateUser(event: APIGatewayProxyEvent) {
 
     return created(result.rows[0]);
   } catch (err) {
-    console.error("handleCreateUser error:", err);
+    logError("/users", err, { sub: claims.sub });
     return internalError();
   }
 }

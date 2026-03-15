@@ -4,6 +4,7 @@ import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, tooManyRequests, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 export async function handleLike(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
@@ -24,6 +25,8 @@ export async function handleLike(event: APIGatewayProxyEvent) {
     const userId: string = userResult.rows[0].id;
 
     if (userId === liked_user_id) return badRequest("You cannot like yourself");
+
+    logInfo("/like", { userId, likedUserId: liked_user_id });
 
     // Rate limit: max 100 likes per 24 hours
     const rateLimitResult = await db.query(
@@ -77,7 +80,7 @@ export async function handleLike(event: APIGatewayProxyEvent) {
 
     return ok({ match: false });
   } catch (err) {
-    console.error("handleLike error:", err);
+    logError("/like", err, { sub: claims.sub });
     return internalError();
   }
 }
@@ -93,6 +96,8 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
     );
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const userId: string = userResult.rows[0].id;
+
+    logInfo("/matches", { userId });
 
     const result = await db.query(
       `SELECT
@@ -129,7 +134,7 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
       matches: result.rows,
     });
   } catch (err) {
-    console.error("handleGetMatches error:", err);
+    logError("/matches", err, { sub: claims.sub });
     return internalError();
   }
 }

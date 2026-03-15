@@ -2,6 +2,7 @@ import type { APIGatewayProxyEvent } from "aws-lambda";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { ok, badRequest, unauthorized, notFound, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 const DEFAULT_RADIUS_M = 5000;
 const MAX_RADIUS_M = 50000;
@@ -33,6 +34,8 @@ export async function handleGetNearby(event: APIGatewayProxyEvent) {
       return notFound("User profile not found. Call POST /users first.");
     }
     const userId: string = userResult.rows[0].id;
+
+    logInfo("/nearby", { userId, radius, limit, offset });
 
     const locationResult = await db.query(
       "SELECT geom FROM locations WHERE user_id = $1",
@@ -83,7 +86,7 @@ export async function handleGetNearby(event: APIGatewayProxyEvent) {
       users: nearbyResult.rows,
     });
   } catch (err) {
-    console.error("handleGetNearby error:", err);
+    logError("/nearby", err, { sub: claims.sub });
     return internalError();
   }
 }

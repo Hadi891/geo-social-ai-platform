@@ -3,6 +3,7 @@ import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody } from "../utils/validation";
 import { ok, badRequest, unauthorized, notFound, internalError } from "../utils/response";
+import { logInfo, logError } from "../utils/logger";
 
 type UpdateLocationBody = {
   latitude: number;
@@ -42,6 +43,8 @@ export async function handleUpdateLocation(event: APIGatewayProxyEvent) {
 
     const userId = userResult.rows[0].id;
 
+    logInfo("/location", { userId, latitude, longitude });
+
     await db.query(
       `INSERT INTO locations (user_id, latitude, longitude, geom, updated_at)
        VALUES ($1, $2, $3, ST_MakePoint($3, $2)::geography, NOW())
@@ -55,7 +58,7 @@ export async function handleUpdateLocation(event: APIGatewayProxyEvent) {
 
     return ok({ user_id: userId, latitude, longitude });
   } catch (err) {
-    console.error("handleUpdateLocation error:", err);
+    logError("/location", err, { sub: claims.sub });
     return internalError();
   }
 }
