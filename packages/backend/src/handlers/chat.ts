@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString, isUUID, isValidTimestamp } from "../utils/validation";
-import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
+import { ok, created, badRequest, unauthorized, notFound, forbidden, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
 type SendMessageBody = {
@@ -105,7 +105,17 @@ async function getMessages(event: APIGatewayProxyEvent) {
     }
 
     const result = await db.query(
-      `SELECT id, match_id, sender_id, message_text, message_type, created_at
+      `SELECT
+         id,
+         match_id,
+         sender_id,
+         CASE WHEN deleted_at IS NOT NULL THEN NULL ELSE message_text END AS message_text,
+         message_type,
+         created_at,
+         updated_at,
+         deleted_at,
+         (deleted_at IS NOT NULL) AS is_deleted,
+         (updated_at IS NOT NULL) AS is_edited
        FROM messages
        WHERE match_id = $1
          AND ($2::timestamp IS NULL OR created_at < $2)
@@ -164,6 +174,104 @@ export async function handleMarkRead(event: APIGatewayProxyEvent) {
     return ok({ ok: true });
   } catch (err) {
     logError("/chat/read", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
+// ─── PATCH /chat/message ──────────────────────────────────────────────────────
+
+export async function handleEditMessage(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ message_id: string; message_text: string }>(event.body);
+  if (!body) return badRequest("Invalid or missing request body");
+
+  const { message_id, message_text } = body;
+  if (!isUUID(message_id)) return badRequest("message_id must be a valid UUID");
+  if (!isString(message_text)) return badRequest("message_text must be a non-empty string");
+
+  try {
+    const userResult = await db.query(
+      "SELECT id FROM users WHERE cognito_sub = $1",
+      [claims.sub]
+    );
+    if (userResult.rowCount === 0) return notFound("User profile not found.");
+    const userId: string = userResult.rows[0].id;
+
+    // Fetch message and verify the caller is in the match (JOIN enforces it)
+    const msgResult = await db.query(
+      `SELECT m.id, m.sender_id, m.message_type, m.deleted_at
+       FROM messages m
+       JOIN matches ma ON ma.id = m.match_id AND (ma.user_a = $2 OR ma.user_b = $2)
+       WHERE m.id = $1`,
+      [message_id, userId]
+    );
+    if (msgResult.rowCount === 0) return notFound("Message not found.");
+
+    const msg = msgResult.rows[0];
+    if (msg.sender_id !== userId) return forbidden("You can only edit your own messages.");
+    if (msg.message_type !== "text") return badRequest("Only text messages can be edited.");
+    if (msg.deleted_at !== null) return badRequest("Cannot edit a deleted message.");
+
+    logInfo("/chat/message PATCH", { userId, messageId: message_id });
+
+    await db.query(
+      "UPDATE messages SET message_text = $1, updated_at = NOW() WHERE id = $2",
+      [message_text, message_id]
+    );
+
+    return ok({ ok: true });
+  } catch (err) {
+    logError("/chat/message PATCH", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
+// ─── DELETE /chat/message ─────────────────────────────────────────────────────
+
+export async function handleDeleteMessage(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ message_id: string }>(event.body);
+  if (!body) return badRequest("Invalid or missing request body");
+
+  const { message_id } = body;
+  if (!isUUID(message_id)) return badRequest("message_id must be a valid UUID");
+
+  try {
+    const userResult = await db.query(
+      "SELECT id FROM users WHERE cognito_sub = $1",
+      [claims.sub]
+    );
+    if (userResult.rowCount === 0) return notFound("User profile not found.");
+    const userId: string = userResult.rows[0].id;
+
+    // Fetch message and verify the caller is in the match (JOIN enforces it)
+    const msgResult = await db.query(
+      `SELECT m.id, m.sender_id, m.deleted_at
+       FROM messages m
+       JOIN matches ma ON ma.id = m.match_id AND (ma.user_a = $2 OR ma.user_b = $2)
+       WHERE m.id = $1`,
+      [message_id, userId]
+    );
+    if (msgResult.rowCount === 0) return notFound("Message not found.");
+
+    const msg = msgResult.rows[0];
+    if (msg.sender_id !== userId) return forbidden("You can only delete your own messages.");
+    if (msg.deleted_at !== null) return badRequest("Message is already deleted.");
+
+    logInfo("/chat/message DELETE", { userId, messageId: message_id });
+
+    await db.query(
+      "UPDATE messages SET deleted_at = NOW() WHERE id = $1",
+      [message_id]
+    );
+
+    return ok({ ok: true });
+  } catch (err) {
+    logError("/chat/message DELETE", err, { sub: claims.sub });
     return internalError();
   }
 }

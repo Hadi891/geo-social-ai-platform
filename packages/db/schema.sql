@@ -55,8 +55,14 @@ CREATE TABLE IF NOT EXISTS messages (
     sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message_text TEXT NOT NULL,
     message_type TEXT DEFAULT 'text',
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
 );
+
+-- Migrate existing installations: add columns if not already present
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 
 CREATE TABLE IF NOT EXISTS match_reads (
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
