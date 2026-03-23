@@ -7,7 +7,7 @@ import { ok, badRequest, unauthorized, notFound, forbidden, internalError } from
 import { logInfo, logError } from "../utils/logger";
 
 type ContextType = "initial" | "chat";
-type ConversationMode = "discovery" | "flow" | "stalled" | "tension";
+type ConversationMode = "discovery" | "flow" | "stalled" | "tension" | "inactive";
 
 type AiSuggestionsBody = {
   match_id: string;
@@ -20,7 +20,8 @@ type MessageRow = {
   created_at: Date;
 };
 
-const STALLED_THRESHOLD_HOURS = 12;
+const INACTIVE_THRESHOLD_HOURS = 24; // basically dead — no messages for > 24 h
+const STALLED_THRESHOLD_HOURS  = 12; // slowing down or stuck — no messages for > 12 h
 
 // ── Infer lightweight conversation mode from recent messages ─────────────────
 function inferMode(messages: MessageRow[], now: Date): ConversationMode {
@@ -32,7 +33,8 @@ function inferMode(messages: MessageRow[], now: Date): ConversationMode {
   const hoursSinceLast =
     (now.getTime() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
 
-  if (hoursSinceLast > STALLED_THRESHOLD_HOURS) return "stalled";
+  if (hoursSinceLast > INACTIVE_THRESHOLD_HOURS) return "inactive";
+  if (hoursSinceLast > STALLED_THRESHOLD_HOURS)  return "stalled";
 
   // Simple tension heuristic: very short / cold recent replies
   const recentThree = nonDeleted.slice(-3).map(m => m.message_text.toLowerCase().trim());
@@ -113,14 +115,16 @@ function buildPrompt(params: {
       `Conversation mode: ${mode}`,
     );
 
-    if (mode === "stalled") {
-      lines.push("The conversation has gone quiet. Suggest messages that re-open it naturally.");
+    if (mode === "inactive") {
+      lines.push("The conversation has been silent for more than 24 hours and feels dormant. Suggest warm, low-pressure messages to gently bring it back to life — no guilt-tripping or pressure.");
+    } else if (mode === "stalled") {
+      lines.push("The conversation has slowed down or feels stuck. Suggest messages that re-open it naturally with a light touch.");
     } else if (mode === "tension") {
-      lines.push("The conversation seems a bit cold or tense. Suggest light, non-confrontational messages.");
+      lines.push("The conversation feels awkward, cold, or a bit negative. Suggest light, non-confrontational messages to ease the tone.");
     } else if (mode === "discovery") {
       lines.push("The conversation has just started. Suggest replies that build connection and curiosity.");
     } else {
-      lines.push("The conversation is flowing well. Suggest contextually relevant follow-up messages.");
+      lines.push("The conversation is flowing well naturally. Suggest contextually relevant follow-up messages.");
     }
 
     if (recentMessages.length > 0) {
