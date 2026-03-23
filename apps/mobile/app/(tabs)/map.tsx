@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BottomNavBar from '@/components/BottomNavBar';
 
-export default function HomeScreen() {
+export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text>Home Page</Text>
+        <Text>Map Page</Text>
       </View>
 
-      <BottomNavBar activeTab="home" />
+      <BottomNavBar activeTab="map" />
     </View>
   );
 }

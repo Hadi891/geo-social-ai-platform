@@ -23,7 +23,7 @@ export default function SignUpStep5Screen() {
 
       <Pressable
         style={styles.signupButton}
-        onPress={() => router.replace('/signup/step5')}
+        onPress={() => router.replace('/home')}
       >
         <Text style={styles.signupButtonText}>Sign up →</Text>
       </Pressable>

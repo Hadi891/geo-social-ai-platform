@@ -51,7 +51,7 @@ export default function SignupStep2Screen() {
         contentFit="contain"
       />
 
-      <Pressable style={styles.backButton} onPress={() => router.replace('/(tabs)')}>
+      <Pressable style={styles.backButton} onPress={() => router.replace('/signup/step1')}>
         <Text style={styles.backButtonText}>←</Text>
       </Pressable>
 

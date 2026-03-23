@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BottomNavBar from '@/components/BottomNavBar';
 
-export default function HomeScreen() {
+export default function AssistantScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text>Home Page</Text>
+        <Text>AI Assistant Page</Text>
       </View>
 
-      <BottomNavBar activeTab="home" />
+      <BottomNavBar activeTab="assistant" />
     </View>
   );
 }
