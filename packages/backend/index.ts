@@ -9,6 +9,7 @@ import { handlePostTyping, handleGetTyping } from "./src/handlers/typing";
 import { handleCreatePost, handleGetPosts, handleAddComment, handleGetComments, handleLikePost, handleUnlikePost } from "./src/handlers/posts";
 import { handleCreateStory, handleGetUserStories, handleGetStoriesFeed, handleViewStory, handleDeleteStory } from "./src/handlers/stories";
 import { handleAiSuggestions } from "./src/handlers/aiSuggestions";
+import { handleAssistant } from "./src/handlers/assistant";
 import { notFound, badRequest } from "./src/utils/response";
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -39,6 +40,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (method === "POST" && path === "/stories/view") return handleViewStory(event);
   if (method === "DELETE" && path === "/stories") return handleDeleteStory(event);
   if (method === "POST" && path === "/ai-suggestions") return handleAiSuggestions(event);
+  if (method === "POST" && path === "/assistant") return handleAssistant(event);
 
   if (method === "OPTIONS") {
     return {
