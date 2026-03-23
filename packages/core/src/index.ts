@@ -6,10 +6,11 @@
 // and can be expanded with more sophisticated analysis as needed.
 
 export type ConversationMode =
-  | "discovery"
-  | "flow"
-  | "stalled"
-  | "tension";
+  | "discovery"   // conversation just started
+  | "flow"        // conversation is going well naturally
+  | "stalled"     // conversation is slowing down or stuck
+  | "tension"     // conversation feels awkward, cold, or negative
+  | "inactive";   // conversation is basically dead — no messages for a long time (>24h)
 
 export type VibeSignals = {
   replyDelayMs: number;
@@ -21,8 +22,9 @@ export type VibeSignals = {
 export function detectConversationMode(
   signals: VibeSignals
 ): ConversationMode {
+  if (signals.replyDelayMs > 86_400_000) return "inactive"; // >24 h
   if (signals.sentimentScore < -0.4) return "tension";
-  if (signals.messageLength < 8 && signals.replyDelayMs > 60000) return "stalled";
+  if (signals.messageLength < 8 && signals.replyDelayMs > 43_200_000) return "stalled"; // >12 h
   if (signals.sentimentScore > 0.4 && signals.messageLength > 20) return "flow";
   return "discovery";
 }

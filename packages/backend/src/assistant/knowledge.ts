@@ -159,8 +159,13 @@ The AI Suggestions button in chat gives you three short, natural message ideas w
 not sure what to say next.
 At the very start of a conversation it generates icebreakers and openers based on interests
 you share with your match.
-Mid-conversation it reads the recent messages and suggests replies based on how the conversation
-is going — whether it is flowing well, has gone quiet for a while, or feels a bit tense.
+Mid-conversation it reads the recent messages and infers one of five conversation modes:
+  - Discovery: the conversation is just starting
+  - Flow: the conversation is going well naturally
+  - Stalled: the conversation is slowing down or stuck
+  - Tension: the conversation feels awkward, cold, or negative
+  - Inactive: the conversation has been silent for a long time (more than 24 hours)
+Suggestions are tailored to the detected mode.
 The AI only runs when you tap the button — it does not watch your chat automatically.
 Suggestions are friendly and non-pushy. Use them as-is or just for inspiration.
     `.trim(),
