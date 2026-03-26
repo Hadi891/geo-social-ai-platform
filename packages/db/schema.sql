@@ -184,3 +184,21 @@ WHERE is_profile_photo = TRUE;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_photo_position_per_user
 ON photos(user_id, position)
 WHERE position IS NOT NULL;
+
+-- Migrate existing installations: add is_verified to users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS user_verifications (
+    user_id                UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    status                 TEXT NOT NULL DEFAULT 'pending',
+    profile_photo_url      TEXT,
+    liveness_session_id    TEXT,
+    liveness_confidence    DOUBLE PRECISION,
+    face_similarity        DOUBLE PRECISION,
+    reference_image_s3_key TEXT,
+    verified_at            TIMESTAMP NULL,
+    rejection_reason       TEXT NULL,
+    created_at             TIMESTAMP DEFAULT NOW(),
+    updated_at             TIMESTAMP DEFAULT NOW(),
+    CHECK (status IN ('pending', 'verified', 'rejected'))
+);
