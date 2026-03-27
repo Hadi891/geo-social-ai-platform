@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { theme } from '@/constants/theme';
+import { router } from 'expo-router';
 
 export default function SignupStep1Screen() {
   return (
@@ -18,12 +19,18 @@ export default function SignupStep1Screen() {
         contentFit="contain"
       />
 
+      <Pressable style={styles.backButton} onPress={() => router.replace('/')}>
+                <Text style={styles.backButtonText}>←</Text>
+      </Pressable>
+
       <View style={styles.content}>
         <Image
           source={require('@/assets/images/tempLogo.png')}
           style={styles.logo}
           contentFit="contain"
         />
+
+
 
         <Text style={styles.title}>Welcome to Mingle</Text>
 
@@ -86,6 +93,22 @@ const styles = StyleSheet.create({
     width: 170,
     height: 150,
   },
+  backButton: {
+      position: 'absolute',
+      top: 55,
+      left: 20,
+      zIndex: 10,
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    backButtonText: {
+      fontSize: 30,
+      color: '#4C2376',
+      fontWeight: '900',
+    },
   content: {
     flex: 1,
     alignItems: 'center',

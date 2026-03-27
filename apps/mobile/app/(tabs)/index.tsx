@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { theme } from '@/constants/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-export default function SignupStep1Screen() {
+export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <Image
@@ -26,41 +25,23 @@ export default function SignupStep1Screen() {
         />
 
         <Text style={styles.title}>Welcome to Mingle</Text>
-
         <Text style={styles.subtitle}>
-          Where your next great connection is just a tap away!
+          Find meaningful connections, beautiful moments, and the right match
+          for you.
         </Text>
 
-        <Text style={styles.paragraph}>
-          We believe that dating should be{' '}
-          <Text style={styles.highlight}>fun</Text>,{' '}
-          <Text style={styles.highlight}>effortless</Text>, and full of{' '}
-          <Text style={styles.highlight}>exciting</Text> possibilities.
-        </Text>
+        <View style={styles.buttonGroup}>
+          <Link href="/login/login" asChild>
+            <Pressable style={styles.loginButton}>
+              <Text style={styles.loginButtonText}>Login</Text>
+            </Pressable>
+          </Link>
 
-        <Text style={styles.paragraph}>
-          Whether you're searching for a deep connection, a spontaneous coffee
-          date, or a weekend partner-in-crime, you're exactly where you need to
-          be.
-        </Text>
-
-        <Text style={styles.paragraph}>
-          Dive in, build a profile that shows off the real you, and let the
-          sparks fly!
-        </Text>
-
-        <Link href="/signup/step2" asChild>
-          <Pressable style={styles.button}>
-            <Text style={styles.buttonText}>Start →</Text>
-          </Pressable>
-        </Link>
-
-        <View style={styles.pagination}>
-          <View style={[styles.dot, styles.activeDot]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
+          <Link href="/signup/step1" asChild>
+            <Pressable style={styles.signupButton}>
+              <Text style={styles.signupButtonText}>Sign up</Text>
+            </Pressable>
+          </Link>
         </View>
       </View>
     </View>
@@ -89,69 +70,59 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingTop: 110,
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   logo: {
-    width: 95,
-    height: 95,
-    marginBottom: 28,
+    width: 110,
+    height: 110,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '700',
     color: '#44206B',
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   subtitle: {
-    fontSize: 17,
+    fontSize: 16,
     color: '#5A3B84',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 34,
     maxWidth: 300,
+    marginBottom: 40,
   },
-  paragraph: {
-    fontSize: 16,
-    color: '#1F1F1F',
-    textAlign: 'center',
-    lineHeight: 25,
-    marginBottom: 22,
-    maxWidth: 310,
+  buttonGroup: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 16,
   },
-  highlight: {
-    color: '#8F47C7',
-    fontWeight: '600',
-  },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#D85BC7',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
+  loginButton: {
+    width: '80%',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D85BC7',
+    paddingVertical: 14,
     borderRadius: 999,
-    minWidth: 120,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#FFFFFF',
+  signupButton: {
+    width: '80%',
+    backgroundColor: '#D85BC7',
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    color: '#D85BC7',
     fontSize: 16,
     fontWeight: '700',
   },
-  pagination: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 26,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#BDBDBD',
-  },
-  activeDot: {
-    backgroundColor: '#7C57C8',
+  signupButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

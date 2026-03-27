@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -12,11 +13,15 @@ import {
 
 export default function SignupStep2Screen() {
 //   const [suggestPassword, setSuggestPassword] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const randomPasswordGenerator = (length : number) => {
       var result           = '';
@@ -34,6 +39,56 @@ export default function SignupStep2Screen() {
     setConfirmPassword(generated);
     setShowPassword(true);
     setShowConfirmPassword(true);
+  };
+
+  const validateForm = () => {
+    const emailTrimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!firstName.trim()) {
+      setErrors({ firstName: 'First name is required' });
+      Alert.alert('Error', 'First name is required');
+      return false;
+    }
+
+    if (!lastName.trim()) {
+      setErrors({ lastName: 'Last name is required' });
+      Alert.alert('Error', 'Last name is required');
+      return false;
+    }
+
+    if (!emailTrimmed) {
+      setErrors({ email: 'Email is required' });
+      Alert.alert('Error', 'Email is required');
+      return false;
+    }
+
+    if (!emailRegex.test(emailTrimmed)) {
+      setErrors({ email: 'Please enter a valid email address' });
+      Alert.alert('Error', 'Please enter a valid email address');
+      return false;
+    }
+
+    if (!password.trim()) {
+      setErrors({ password: 'Password is required' });
+      Alert.alert('Error', 'Password is required');
+      return false;
+    }
+
+    if (!confirmPassword.trim()) {
+      setErrors({ confirmPassword: 'Please confirm your password' });
+      Alert.alert('Error', 'Please confirm your password');
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setErrors({ confirmPassword: 'Passwords do not match' });
+      Alert.alert('Error', 'Passwords do not match');
+      return false;
+    }
+
+    setErrors({});
+    return true;
   };
 
 
@@ -60,29 +115,82 @@ export default function SignupStep2Screen() {
         <Text style={styles.title}>Login Information</Text>
 
         <View style={styles.form}>
+            <View style={styles.nameRow}>
+              <View style={styles.halfField}>
+                <Text style={styles.label}>
+                  First Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.firstName && styles.inputError]}
+                  placeholder="First Name"
+                  placeholderTextColor="#6F6F6F"
+                  value={firstName}
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    if (errors.firstName) setErrors({});
+                  }}
+                />
+                {errors.firstName ? (
+                  <Text style={styles.errorText}>{errors.firstName}</Text>
+                ) : null}
+              </View>
+
+              <View style={styles.halfField}>
+                <Text style={styles.label}>
+                  Last Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.lastName && styles.inputError]}
+                  placeholder="Last Name"
+                  placeholderTextColor="#6F6F6F"
+                  value={lastName}
+                  onChangeText={(text) => {
+                    setLastName(text);
+                    if (errors.lastName) setErrors({});
+                  }}
+                />
+                {errors.lastName ? (
+                  <Text style={styles.errorText}>{errors.lastName}</Text>
+                ) : null}
+              </View>
+            </View>
+
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>
+              Email <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.email && styles.inputError]}
               placeholder="Email"
               placeholderTextColor="#6F6F6F"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errors.email) setErrors({});
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {errors.email ? (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            ) : null}
           </View>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>New Password</Text>
+            <Text style={styles.label}>
+              New Password <Text style={styles.required}>*</Text>
+            </Text>
 
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
               <TextInput
                 style={styles.inputWithIcon}
                 placeholder="Password"
                 placeholderTextColor="#6F6F6F"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors({});
+                }}
                 secureTextEntry={!showPassword}
               />
 
@@ -97,22 +205,35 @@ export default function SignupStep2Screen() {
                 />
               </Pressable>
             </View>
+
+            {errors.password ? (
+              <Text style={styles.errorText}>{errors.password}</Text>
+            ) : null}
           </View>
+
 
           <Pressable style={styles.suggestButton} onPress={handleSuggestPassword}>
             <Text style={styles.suggestButtonText}>Suggest a password</Text>
           </Pressable>
 
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Confirm New Password</Text>
 
-            <View style={styles.inputWrapper}>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>
+              Confirm New Password <Text style={styles.required}>*</Text>
+            </Text>
+
+            <View
+              style={[styles.inputWrapper, errors.confirmPassword && styles.inputError]}
+            >
               <TextInput
                 style={styles.inputWithIcon}
                 placeholder="Confirm New Password"
                 placeholderTextColor="#6F6F6F"
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errors.confirmPassword) setErrors({});
+                }}
                 secureTextEntry={!showConfirmPassword}
               />
 
@@ -127,12 +248,20 @@ export default function SignupStep2Screen() {
                 />
               </Pressable>
             </View>
+
+            {errors.confirmPassword ? (
+              <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+            ) : null}
           </View>
         </View>
 
         <Pressable
           style={styles.nextButton}
-          onPress={() => router.push('/signup/step3')}
+          onPress={() => {
+            if (validateForm()) {
+              router.push('/signup/step3');
+            }
+          }}
         >
           <Text style={styles.nextText}>Next</Text>
           <Text style={styles.nextArrow}>→</Text>
@@ -203,6 +332,16 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
   },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+
+  halfField: {
+    width: '48%',
+  },
+
   fieldBlock: {
     marginBottom: 22,
   },
@@ -288,5 +427,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#4C2376',
     fontWeight: '600',
+  },
+
+  required: {
+    color: '#D93025',
+  },
+
+  inputError: {
+    borderWidth: 1,
+    borderColor: '#D93025',
+  },
+
+  errorText: {
+    color: '#D93025',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 6,
   },
 });

@@ -22,6 +22,9 @@ export default function SignupStep4Screen() {
   const [planModalVisible, setPlanModalVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -31,6 +34,7 @@ export default function SignupStep4Screen() {
 
     if (!result.canceled && result.assets?.length > 0) {
       setSelectedImageUri(result.assets[0].uri);
+      setIsVerified(false);
     } else {
       Alert.alert('No image selected');
     }
@@ -95,30 +99,51 @@ export default function SignupStep4Screen() {
           </View>
 
           <View style={styles.fieldBlock}>
-              <Text style={styles.label}>Profile Picture</Text>
+            <Text style={styles.label}>Profile Picture</Text>
 
-              <Pressable style={styles.imagePlaceholder} onPress={pickImage}>
-                {selectedImageUri ? (
-                  <Image
-                    source={{ uri: selectedImageUri }}
-                    style={styles.selectedImage}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Ionicons name="image-outline" size={34} color="#9B9B9B" />
-                )}
-              </Pressable>
-            </View>
+            <Pressable style={styles.imagePlaceholder} onPress={pickImage}>
+              {selectedImageUri ? (
+                <Image
+                  source={{ uri: selectedImageUri }}
+                  style={styles.selectedImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons name="image-outline" size={34} color="#9B9B9B" />
+              )}
+            </Pressable>
+
+            <Pressable
+              disabled={!selectedImageUri}
+              style={[
+                styles.verifyButton,
+                !selectedImageUri && styles.verifyButtonDisabled,
+                isVerified && styles.verifyButtonVerified,
+              ]}
+              onPress={() => setVerifyModalVisible(true)}
+            >
+              <Text
+                style={[
+                  styles.verifyButtonText,
+                  !selectedImageUri && styles.verifyButtonTextDisabled,
+                ]}
+              >
+                {isVerified ? 'Verified' : 'Verification'}
+              </Text>
+            </Pressable>
+          </View>
 
         </View>
 
-        <Pressable
-          style={styles.nextButton}
-          onPress={() => router.push('/signup/step5')}
-        >
-          <Text style={styles.nextText}>Next</Text>
-          <Text style={styles.nextArrow}>→</Text>
-        </Pressable>
+        {isVerified && (
+          <Pressable
+            style={styles.nextButton}
+            onPress={() => router.push('/signup/step5')}
+          >
+            <Text style={styles.nextText}>Next</Text>
+            <Text style={styles.nextArrow}>→</Text>
+          </Pressable>
+        )}
 
         <View style={styles.pagination}>
           <View style={styles.dot} />
@@ -128,6 +153,37 @@ export default function SignupStep4Screen() {
           <View style={styles.dot} />
         </View>
       </View>
+
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={verifyModalVisible}
+        onRequestClose={() => setVerifyModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setVerifyModalVisible(false)}
+        >
+          <Pressable style={styles.verifyModalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Verify</Text>
+            <Text style={styles.verifyModalText}>
+              Click verify to confirm this picture.
+            </Text>
+
+            <Pressable
+              style={styles.modalVerifyButton}
+              onPress={() => {
+                setIsVerified(true);
+                setVerifyModalVisible(false);
+              }}
+            >
+              <Text style={styles.modalVerifyButtonText}>Verify</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
 
       <SelectionModal
         visible={planModalVisible}
@@ -356,6 +412,53 @@ const styles = StyleSheet.create({
   nextArrow: {
     fontSize: 18,
     color: '#111',
+    fontWeight: '700',
+  },
+  verifyButton: {
+    alignSelf: 'center',
+    marginTop: 4,
+    backgroundColor: '#D85BC7',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyButtonDisabled: {
+    backgroundColor: '#D3D3D3',
+  },
+  verifyButtonVerified: {
+    backgroundColor: '#7C57C8',
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  verifyButtonTextDisabled: {
+    color: '#8A8A8A',
+  },
+  verifyModalCard: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    alignItems: 'center',
+  },
+  verifyModalText: {
+    fontSize: 14,
+    color: '#444',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  modalVerifyButton: {
+    backgroundColor: '#D85BC7',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  modalVerifyButtonText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '700',
   },
 });
