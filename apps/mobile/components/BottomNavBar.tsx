@@ -45,7 +45,7 @@ const tabs: {
   },
   {
     key: 'assistant',
-    label: 'BOT',
+    label: 'ASS',
     route: '/assistant',
     renderIcon: (focused) => (
       <MaterialCommunityIcons
