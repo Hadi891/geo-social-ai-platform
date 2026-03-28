@@ -93,7 +93,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar />
+      <TopBar title="Mingle Home"/>
 
       <View style={styles.content}>
         <FlatList
