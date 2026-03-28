@@ -157,3 +157,12 @@ Learn more about the power of Turborepo:
 - [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
 - [Configuration Options](https://turborepo.dev/docs/reference/configuration)
 - [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+
+
+## To run mobile app   
+go to geo../apps/mobile  
+run: npx expo start -c after running emulator then press a  
+libraries to download after downloading npm of course  
+npx expo install expo-image-picker  
+npx expo install @react-native-community/datetimepicker  
+use JVM version 17 to 20 not more  
