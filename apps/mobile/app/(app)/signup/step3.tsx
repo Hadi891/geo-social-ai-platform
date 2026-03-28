@@ -4,6 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -18,11 +19,66 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Karen', 'Prefer not to say'];
 const INTERESTS_BY_CATEGORY = require('@/assets/interests.json') as Record<string, string[]>;
 const LOOKING_FOR_OPTIONS = ['Looking 1', 'Looking 2', 'Looking 3'];
 
+const MIN_INTERESTS_REQUIRED = 3;
+const MAX_TOTAL_INTERESTS = 10;
+const MAX_INTERESTS_PER_CATEGORY = 3;
+
+const MINIMUM_AGE = 18;
+const MIN_LOOKING_FOR_REQUIRED = 1;
+
+const INTEREST_CATEGORY_BY_OPTION = Object.entries(INTERESTS_BY_CATEGORY).reduce(
+  (acc, [category, options]) => {
+    options.forEach((option) => {
+      acc[option] = category;
+    });
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
 function formatDate(date: Date) {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = String(date.getFullYear());
   return `${day}/${month}/${year}`;
+}
+
+function parseDateString(value: string) {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return null;
+
+  const [dd, mm, yyyy] = value.split('/');
+  const day = Number(dd);
+  const month = Number(mm);
+  const year = Number(yyyy);
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function getAgeFromDate(date: Date) {
+  const today = new Date();
+
+  let age = today.getFullYear() - date.getFullYear();
+
+  const hasHadBirthdayThisYear =
+    today.getMonth() > date.getMonth() ||
+    (today.getMonth() === date.getMonth() &&
+      today.getDate() >= date.getDate());
+
+  if (!hasHadBirthdayThisYear) {
+    age -= 1;
+  }
+
+  return age;
 }
 
 export default function SignupStep3Screen() {
@@ -38,14 +94,17 @@ export default function SignupStep3Screen() {
   const [lookingFor, setLookingFor] = useState<string[]>([]);
   const [lookingForModalVisible, setLookingForModalVisible] = useState(false);
 
+  const [error, setError] = useState<{
+    dateOfBirth?: string;
+    gender?: string;
+    interests?: string;
+    lookingFor?: string;
+  }>({});
+
+  const [interestSheetError, setInterestSheetError] = useState('');
+
   const parsedDate = useMemo(() => {
-    const parts = dateOfBirth.split('/');
-    if (parts.length === 3) {
-      const [dd, mm, yyyy] = parts;
-      const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-      if (!isNaN(d.getTime())) return d;
-    }
-    return new Date(2000, 0, 1);
+    return parseDateString(dateOfBirth) ?? new Date(2000, 0, 1);
   }, [dateOfBirth]);
 
   const toggleMultiSelect = (
@@ -64,6 +123,94 @@ export default function SignupStep3Screen() {
     if (values.length === 0) return placeholder;
     return values.join(', ');
   };
+
+  const toggleInterest = (value: string) => {
+    const alreadySelected = interests.includes(value);
+
+    if (alreadySelected) {
+      setInterests((prev) => prev.filter((item) => item !== value));
+      setInterestSheetError('');
+      setError((prev) => ({
+        ...prev,
+        interests: '',
+      }));
+      return;
+    }
+
+    if (interests.length >= MAX_TOTAL_INTERESTS) {
+      setInterestSheetError(`You can select up to ${MAX_TOTAL_INTERESTS} interests`);
+      return;
+    }
+
+    const category = INTEREST_CATEGORY_BY_OPTION[value];
+    const selectedInSameCategory = interests.filter(
+      (item) => INTEREST_CATEGORY_BY_OPTION[item] === category
+    ).length;
+
+    if (selectedInSameCategory >= MAX_INTERESTS_PER_CATEGORY) {
+      setInterestSheetError(
+        `You can select up to ${MAX_INTERESTS_PER_CATEGORY} interests from ${category}`
+      );
+      return;
+    }
+
+    setInterests((prev) => [...prev, value]);
+    setInterestSheetError('');
+    setError((prev) => ({
+      ...prev,
+      interests: '',
+    }));
+  };
+
+  const toggleLookingFor = (value: string) => {
+    if (lookingFor.includes(value)) {
+      setLookingFor((prev) => prev.filter((item) => item !== value));
+    } else {
+      setLookingFor((prev) => [...prev, value]);
+    }
+
+    setError((prev) => ({
+      ...prev,
+      lookingFor: '',
+    }));
+  };
+
+  const handleNext = () => {
+      const newError: {
+          dateOfBirth?: string;
+          gender?: string;
+          interests?: string;
+          lookingFor?: string;
+        } = {};
+
+        const parsedDobValue = parseDateString(dateOfBirth.trim());
+
+        if (!dateOfBirth.trim()) {
+          newError.dateOfBirth = 'Date of birth is required';
+        } else if (!parsedDobValue) {
+          newError.dateOfBirth = 'Enter a valid date in DD/MM/YYYY';
+        } else if (getAgeFromDate(parsedDobValue) < MINIMUM_AGE) {
+          newError.dateOfBirth = `You must be at least ${MINIMUM_AGE} years old`;
+        }
+
+        if (!gender) {
+          newError.gender = 'Gender is required';
+        }
+
+        if (interests.length < MIN_INTERESTS_REQUIRED) {
+          newError.interests = `Select at least ${MIN_INTERESTS_REQUIRED} interests`;
+        }
+
+        if (lookingFor.length < MIN_LOOKING_FOR_REQUIRED) {
+          newError.lookingFor = `Select at least ${MIN_LOOKING_FOR_REQUIRED} option`;
+        }
+
+        setError(newError);
+
+        if (Object.keys(newError).length > 0) return;
+
+        router.push('/signup/step4');
+  }
 
   return (
     <View style={styles.container}>
@@ -99,7 +246,13 @@ export default function SignupStep3Screen() {
                 placeholder="DD/MM/YYYY"
                 placeholderTextColor="#6F6F6F"
                 value={dateOfBirth}
-                onChangeText={setDateOfBirth}
+                onChangeText={(text) => {
+                  setDateOfBirth(text);
+                  setError((prev) => ({
+                    ...prev,
+                    dateOfBirth: '',
+                  }));
+                }}
                 keyboardType="numbers-and-punctuation"
               />
 
@@ -110,6 +263,10 @@ export default function SignupStep3Screen() {
                 <Ionicons name="calendar-outline" size={18} color="#6F6F6F" />
               </Pressable>
             </View>
+
+            {error.dateOfBirth ? (
+                            <Text style={styles.errorText}>{error.dateOfBirth}</Text>
+            ) : null}
           </View>
 
           <View style={styles.fieldBlock}>
@@ -123,6 +280,10 @@ export default function SignupStep3Screen() {
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#7A7A7A" />
             </Pressable>
+
+            {error.gender ? (
+              <Text style={styles.errorText}>{error.gender}</Text>
+            ) : null}
           </View>
 
           <View style={styles.fieldBlock}>
@@ -135,10 +296,16 @@ export default function SignupStep3Screen() {
                 numberOfLines={1}
                 style={[styles.selectText, interests.length === 0 && styles.placeholderText]}
               >
-                {interests.length === 0 ? 'Choose option(s) ..' : `${interests.length} selected`}
+                {interests.length === 0
+                  ? `Choose at least ${MIN_INTERESTS_REQUIRED}`
+                  : `${interests.length}/${MAX_TOTAL_INTERESTS} selected`}
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#7A7A7A" />
             </Pressable>
+
+            {error.interests ? (
+                <Text style={styles.errorText}>{error.interests}</Text>
+              ) : null}
           </View>
 
           <View style={styles.fieldBlock}>
@@ -155,12 +322,16 @@ export default function SignupStep3Screen() {
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#7A7A7A" />
             </Pressable>
+
+            {error.lookingFor ? (
+              <Text style={styles.errorText}>{error.lookingFor}</Text>
+            ) : null}
           </View>
         </View>
 
         <Pressable
           style={styles.nextButton}
-          onPress={() => router.push('/signup/step4')}
+          onPress={handleNext}
         >
           <Text style={styles.nextText}>Next</Text>
           <Text style={styles.nextArrow}>→</Text>
@@ -186,6 +357,10 @@ export default function SignupStep3Screen() {
             if (Platform.OS !== 'ios') setShowDatePicker(false);
             if (selectedDate) {
               setDateOfBirth(formatDate(selectedDate));
+              setError((prev) => ({
+                ...prev,
+                dateOfBirth: '',
+              }));
             }
           }}
         />
@@ -202,6 +377,10 @@ export default function SignupStep3Screen() {
             style={styles.optionRow}
             onPress={() => {
               setGender(option);
+              setError((prev) => ({
+                ...prev,
+                gender: '',
+              }));
               setGenderModalVisible(false);
             }}
           >
@@ -216,8 +395,12 @@ export default function SignupStep3Screen() {
       <InterestBottomSheet
         visible={interestsModalVisible}
         selectedInterests={interests}
-        onClose={() => setInterestsModalVisible(false)}
-        onToggle={(option) => toggleMultiSelect(option, interests, setInterests)}
+        sheetError={interestSheetError}
+        onClose={() => {
+          setInterestsModalVisible(false);
+          setInterestSheetError('');
+        }}
+        onToggle={toggleInterest}
       />
 
       <SelectionModal
@@ -231,7 +414,7 @@ export default function SignupStep3Screen() {
             <Pressable
               key={option}
               style={styles.optionRow}
-              onPress={() => toggleMultiSelect(option, lookingFor, setLookingFor)}
+              onPress={() => toggleLookingFor(option)}
             >
               <Text style={styles.optionText}>{option}</Text>
               <Ionicons
@@ -280,16 +463,18 @@ function SelectionModal({
 }
 
 function InterestBottomSheet({
-        visible,
-        selectedInterests,
-        onClose,
-        onToggle,
-      }: {
-        visible: boolean;
-        selectedInterests: string[];
-        onClose: () => void;
-        onToggle: (value: string) => void;
-      }) {
+      visible,
+      selectedInterests,
+      sheetError,
+      onClose,
+      onToggle,
+    }: {
+      visible: boolean;
+      selectedInterests: string[];
+      sheetError: string;
+      onClose: () => void;
+      onToggle: (value: string) => void;
+    }) {
         const formatCategoryTitle = (value: string) =>
           value
             .replace(/_/g, ' ')
@@ -315,6 +500,8 @@ function InterestBottomSheet({
                     <Text style={styles.sheetDoneText}>Done</Text>
                   </Pressable>
                 </View>
+
+                {sheetError ? <Text style={styles.sheetErrorText}>{sheetError}</Text> : null}
 
                 <ScrollView
                   showsVerticalScrollIndicator={false}
@@ -637,5 +824,18 @@ const styles = StyleSheet.create({
 
   interestChipIcon: {
     marginLeft: 4,
+  },
+
+  errorText: {
+    marginTop: 6,
+    marginLeft: 6,
+    fontSize: 12,
+    color: '#D94B4B',
+  },
+
+  sheetErrorText: {
+    fontSize: 12,
+    color: '#D94B4B',
+    marginBottom: 10,
   },
 });
