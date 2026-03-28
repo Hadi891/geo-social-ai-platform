@@ -177,6 +177,17 @@ ON stories(expires_at);
 CREATE INDEX IF NOT EXISTS idx_story_views_viewer_id
 ON story_views(viewer_id);
 
+CREATE TABLE IF NOT EXISTS match_states (
+    match_id           UUID PRIMARY KEY REFERENCES matches(id) ON DELETE CASCADE,
+    mode               TEXT NOT NULL,
+    message_checkpoint INT NOT NULL DEFAULT 0,
+    updated_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+    CHECK (mode IN ('discovery', 'flow', 'stalled', 'tension', 'inactive'))
+);
+
+-- Migrate existing installations
+ALTER TABLE match_states ADD COLUMN IF NOT EXISTS message_checkpoint INT NOT NULL DEFAULT 0;
+
 CREATE UNIQUE INDEX IF NOT EXISTS one_profile_photo_per_user
 ON photos(user_id)
 WHERE is_profile_photo = TRUE;
