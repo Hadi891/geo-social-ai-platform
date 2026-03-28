@@ -1,0 +1,80 @@
+{
+  "lifestyle": [
+    "Travel",
+    "Food",
+    "Cooking",
+    "Coffee",
+    "Nightlife",
+    "Parties",
+    "Chill",
+    "Shopping",
+    "Fashion",
+    "Self-care"
+  ],
+  "entertainment": [
+    "Movies",
+    "TV Shows",
+    "Music",
+    "Concerts",
+    "Gaming",
+    "Anime",
+    "Podcasts",
+    "Stand-up Comedy",
+    "Theater",
+    "Streaming"
+  ],
+  "sports_fitness": [
+    "Gym",
+    "Fitness",
+    "Running",
+    "Football",
+    "Basketball",
+    "Tennis",
+    "Cycling",
+    "Swimming",
+    "Yoga",
+    "Martial Arts"
+  ],
+  "outdoor": [
+    "Hiking",
+    "Nature",
+    "Beach",
+    "Camping",
+    "Road Trips",
+    "Picnics",
+    "Adventure",
+    "Exploring Cities"
+  ],
+  "creative": [
+    "Photography",
+    "Videography",
+    "Drawing",
+    "Painting",
+    "Writing",
+    "Design",
+    "Content Creation",
+    "Music Production",
+    "Dancing"
+  ],
+  "intellectual": [
+    "AI",
+    "Technology",
+    "Science",
+    "Reading",
+    "Philosophy",
+    "History",
+    "Psychology",
+    "Startups",
+    "Finance"
+  ],
+  "social_personality": [
+    "Deep Conversations",
+    "Humor",
+    "Sarcasm",
+    "Ambition",
+    "Self-Development",
+    "Mindfulness",
+    "Spontaneity",
+    "Leadership"
+  ]
+}
