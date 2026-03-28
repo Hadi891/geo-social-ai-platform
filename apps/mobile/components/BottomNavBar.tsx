@@ -43,11 +43,11 @@ const tabs: {
   },
   {
     key: 'assistant',
-    label: 'ASS',
+    label: 'ASSISTANT',
     renderIcon: (focused) => (
       <MaterialCommunityIcons
         name={focused ? 'robot' : 'robot-outline'}
-        size={20}
+        size={22}
         color={focused ? '#FFFFFF' : INACTIVE}
       />
     ),

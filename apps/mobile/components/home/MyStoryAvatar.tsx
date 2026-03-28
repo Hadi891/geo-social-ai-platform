@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Image,
   ImageSourcePropType,
   Pressable,
@@ -14,6 +15,7 @@ type MyStoryAvatarProps = {
   name?: string;
   storyImages: ImageSourcePropType[];
   onOpenStories?: (images: ImageSourcePropType[]) => void;
+  onAddStory?: () => void;
 };
 
 export default function MyStoryAvatar({
@@ -21,12 +23,31 @@ export default function MyStoryAvatar({
   name = 'Me',
   storyImages,
   onOpenStories,
+  onAddStory,
 }: MyStoryAvatarProps) {
+  const handlePress = () => {
+    Alert.alert(
+      'Your story',
+      'Choose an option',
+      [
+        {
+          text: 'View story',
+          onPress: () => onOpenStories?.(storyImages),
+        },
+        {
+          text: 'Add story',
+          onPress: () => onAddStory?.(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   return (
-    <Pressable
-      style={styles.container}
-      onPress={() => onOpenStories?.(storyImages)}
-    >
+    <Pressable style={styles.container} onPress={handlePress}>
       <View style={styles.outerRing}>
         <View style={styles.innerRing}>
           <Image source={imageSource} style={styles.image} />

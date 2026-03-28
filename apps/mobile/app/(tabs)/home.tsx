@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   FlatList,
   ImageSourcePropType,
   ScrollView,
@@ -7,9 +8,9 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import TopBar from '@/components/TopBar';
-import BottomNavBar from '@/components/BottomNavBar';
 import StoryAvatar from '@/components/home/StoryAvatar';
 import MyStoryAvatar from '@/components/home/MyStoryAvatar';
 import PostCard from '@/components/home/PostCard';
@@ -66,20 +67,24 @@ const posts = [
     tags: ['Art', 'Coffee'],
   },
   {
-      id: '3',
-      name: 'Karen',
-      age: 22,
-      distance: 20,
-      profileImageSource: LOGO_IMAGE,
-      postImageSource: LOGO_IMAGE,
-      caption: 'Always looking for problems.',
-      tags: ['Problems', 'IGR'],
-    },
+    id: '3',
+    name: 'Karen',
+    age: 22,
+    distance: 20,
+    profileImageSource: LOGO_IMAGE,
+    postImageSource: LOGO_IMAGE,
+    caption: 'Always looking for problems.',
+    tags: ['Problems', 'IGR'],
+  },
 ];
 
 export default function HomeScreen() {
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
   const [selectedStoryImages, setSelectedStoryImages] = useState<ImageSourcePropType[]>([]);
+  const [myStoryImages, setMyStoryImages] = useState<ImageSourcePropType[]>([
+    LOGO_IMAGE,
+    LOGO_IMAGE,
+  ]);
 
   const openStoryViewer = (images: ImageSourcePropType[]) => {
     setSelectedStoryImages(images);
@@ -91,9 +96,32 @@ export default function HomeScreen() {
     setSelectedStoryImages([]);
   };
 
+  const handleAddStory = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please allow access to your photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (result.canceled) return;
+
+    const pickedImage: ImageSourcePropType = {
+      uri: result.assets[0].uri,
+    };
+
+    setMyStoryImages((prev) => [...prev, pickedImage]);
+  };
+
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Home"/>
+      <TopBar title="Mingle Home" />
 
       <View style={styles.content}>
         <FlatList
@@ -114,10 +142,11 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.storiesRow}
               >
                 <MyStoryAvatar
-                  imageSource={LOGO_IMAGE}
+                  imageSource={myStoryImages[myStoryImages.length - 1]}
                   name="Your story"
-                  storyImages={[LOGO_IMAGE, LOGO_IMAGE]}
+                  storyImages={myStoryImages}
                   onOpenStories={openStoryViewer}
+                  onAddStory={handleAddStory}
                 />
 
                 {stories.map((story) => (
