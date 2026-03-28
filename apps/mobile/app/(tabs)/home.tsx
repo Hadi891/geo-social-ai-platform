@@ -115,7 +115,7 @@ export default function HomeScreen() {
               >
                 <MyStoryAvatar
                   imageSource={LOGO_IMAGE}
-                  name="Me"
+                  name="Your story"
                   storyImages={[LOGO_IMAGE, LOGO_IMAGE]}
                   onOpenStories={openStoryViewer}
                 />
