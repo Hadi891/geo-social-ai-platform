@@ -146,8 +146,6 @@ export default function HomeScreen() {
         />
       </View>
 
-      <BottomNavBar activeTab="home" />
-
       <StoryViewerModal
         visible={storyViewerVisible}
         images={selectedStoryImages}

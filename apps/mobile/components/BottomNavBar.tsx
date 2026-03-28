@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type TabKey = 'home' | 'map' | 'assistant' | 'chat' | 'profile';
 
@@ -76,8 +77,10 @@ const tabs: {
 ];
 
 export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.container}>
         {tabs.map((tab) => {
           const focused = activeTab === tab.key;
@@ -113,28 +116,20 @@ export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProp
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FCF9FC',
+    paddingTop: 8,
+    paddingHorizontal: 0,
   },
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     backgroundColor: BG,
-    borderRadius: 26,
     paddingTop: 12,
     paddingBottom: 10,
     paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE3EC',
   },
   tab: {
     flex: 1,
