@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BottomNavBar from '@/components/BottomNavBar';
+import TopBar from '@/components/TopBar';
 
 export default function ProfileScreen() {
   return (
     <View style={styles.container}>
+      <TopBar title="Mingle Profile" />
+
       <View style={styles.content}>
         <Text>Profile Page</Text>
       </View>
 
-      <BottomNavBar activeTab="profile" />
     </View>
   );
 }

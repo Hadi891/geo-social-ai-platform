@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BottomNavBar from '@/components/BottomNavBar';
+import TopBar from '@/components/TopBar';
 
-export default function HomeScreen() {
+export default function AssistantScreen() {
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <Text>Home Page</Text>
-      </View>
+      <TopBar title="Mingle Assistant" />
 
-      <BottomNavBar activeTab="home" />
+      <View style={styles.content}>
+        <Text>AI Assistant Page</Text>
+      </View>
     </View>
   );
 }

@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
-type TabKey = 'home' | 'map' | 'assistant' | 'chat' | 'profile';
+export type TabKey = 'home' | 'map' | 'assistant' | 'chat' | 'profile';
 
 type BottomNavBarProps = {
   activeTab: TabKey;
+  onTabPress: (tab: TabKey) => void;
 };
 
 const PINK = '#D85AAF';
@@ -16,13 +16,11 @@ const BG = '#F7F2F6';
 const tabs: {
   key: TabKey;
   label: string;
-  route: string;
   renderIcon: (focused: boolean) => React.ReactNode;
 }[] = [
   {
     key: 'home',
     label: 'HOME',
-    route: '/home',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'home' : 'home-outline'}
@@ -34,7 +32,6 @@ const tabs: {
   {
     key: 'map',
     label: 'MAP',
-    route: '/map',
     renderIcon: (focused) => (
       <Feather
         name="map"
@@ -46,7 +43,6 @@ const tabs: {
   {
     key: 'assistant',
     label: 'ASS',
-    route: '/assistant',
     renderIcon: (focused) => (
       <MaterialCommunityIcons
         name={focused ? 'robot' : 'robot-outline'}
@@ -58,7 +54,6 @@ const tabs: {
   {
     key: 'chat',
     label: 'CHAT',
-    route: '/chat',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'chatbubble' : 'chatbubble-outline'}
@@ -70,7 +65,6 @@ const tabs: {
   {
     key: 'profile',
     label: 'PROFILE',
-    route: '/profile',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'person' : 'person-outline'}
@@ -81,7 +75,7 @@ const tabs: {
   },
 ];
 
-export default function BottomNavBar({ activeTab }: BottomNavBarProps) {
+export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProps) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
@@ -93,7 +87,7 @@ export default function BottomNavBar({ activeTab }: BottomNavBarProps) {
               key={tab.key}
               style={styles.tab}
               onPress={() => {
-                if (!focused) router.replace(tab.route);
+                if (!focused) onTabPress(tab.key);
               }}
             >
               {focused ? (
