@@ -19,7 +19,7 @@ export default function WelcomeScreen() {
 
       <View style={styles.content}>
         <Image
-          source={require('@/assets/images/tempLogo.png')}
+          source={require('@/assets/images/logo.png')}
           style={styles.logo}
           contentFit="contain"
         />
@@ -75,9 +75,8 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   logo: {
-    width: 110,
-    height: 110,
-    marginBottom: 24,
+    width: 150,
+    height: 150,
   },
   title: {
     fontSize: 32,

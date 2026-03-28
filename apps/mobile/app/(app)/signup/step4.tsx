@@ -40,6 +40,9 @@ export default function SignupStep4Screen() {
     }
   };
 
+
+  const hasImage = !!selectedImageUri;
+
   return (
     <View style={styles.container}>
       <Image
@@ -114,18 +117,21 @@ export default function SignupStep4Screen() {
             </Pressable>
 
             <Pressable
-              disabled={!selectedImageUri}
+              disabled={!hasImage || isVerified}
               style={[
                 styles.verifyButton,
-                !selectedImageUri && styles.verifyButtonDisabled,
+                (!hasImage || isVerified) && styles.verifyButtonDisabled,
                 isVerified && styles.verifyButtonVerified,
               ]}
-              onPress={() => setVerifyModalVisible(true)}
+              onPress={() => {
+                if (!hasImage || isVerified) return;
+                setVerifyModalVisible(true);
+              }}
             >
               <Text
                 style={[
                   styles.verifyButtonText,
-                  !selectedImageUri && styles.verifyButtonTextDisabled,
+                  !hasImage && styles.verifyButtonTextDisabled,
                 ]}
               >
                 {isVerified ? 'Verified' : 'Verification'}
@@ -136,14 +142,14 @@ export default function SignupStep4Screen() {
         </View>
 
         {isVerified && (
-          <Pressable
-            style={styles.nextButton}
-            onPress={() => router.push('/signup/step5')}
-          >
-            <Text style={styles.nextText}>Next</Text>
-            <Text style={styles.nextArrow}>→</Text>
-          </Pressable>
+            <Pressable
+                    style={styles.signupButton}
+                    onPress={() => router.replace('/home')}
+                  >
+                    <Text style={styles.signupButtonText}>Sign up →</Text>
+            </Pressable>
         )}
+
 
         <View style={styles.pagination}>
           <View style={styles.dot} />
@@ -423,6 +429,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+
+//     zIndex: 20,
+//     elevation: 5,
   },
   verifyButtonDisabled: {
     backgroundColor: '#D3D3D3',

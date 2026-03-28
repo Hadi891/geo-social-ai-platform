@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Karen', 'Prefer not to say'];
-const INTEREST_OPTIONS = ['Interest 1', 'Interest 2', 'Interest 3'];
+const INTERESTS_BY_CATEGORY = require('@/assets/interests.json') as Record<string, string[]>;
 const LOOKING_FOR_OPTIONS = ['Looking 1', 'Looking 2', 'Looking 3'];
 
 function formatDate(date: Date) {
@@ -135,7 +135,7 @@ export default function SignupStep3Screen() {
                 numberOfLines={1}
                 style={[styles.selectText, interests.length === 0 && styles.placeholderText]}
               >
-                {renderSelectionText(interests, 'Choose option(s) ..')}
+                {interests.length === 0 ? 'Choose option(s) ..' : `${interests.length} selected`}
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#7A7A7A" />
             </Pressable>
@@ -213,36 +213,12 @@ export default function SignupStep3Screen() {
         ))}
       </SelectionModal>
 
-      <SelectionModal
+      <InterestBottomSheet
         visible={interestsModalVisible}
-        title="Select Interests"
+        selectedInterests={interests}
         onClose={() => setInterestsModalVisible(false)}
-      >
-        {INTEREST_OPTIONS.map((option) => {
-          const selected = interests.includes(option);
-          return (
-            <Pressable
-              key={option}
-              style={styles.optionRow}
-              onPress={() => toggleMultiSelect(option, interests, setInterests)}
-            >
-              <Text style={styles.optionText}>{option}</Text>
-              <Ionicons
-                name={selected ? 'checkbox-outline' : 'square-outline'}
-                size={20}
-                color={selected ? '#7C57C8' : '#888'}
-              />
-            </Pressable>
-          );
-        })}
-
-        <Pressable
-          style={styles.modalDoneButton}
-          onPress={() => setInterestsModalVisible(false)}
-        >
-          <Text style={styles.modalDoneButtonText}>Done</Text>
-        </Pressable>
-      </SelectionModal>
+        onToggle={(option) => toggleMultiSelect(option, interests, setInterests)}
+      />
 
       <SelectionModal
         visible={lookingForModalVisible}
@@ -274,6 +250,8 @@ export default function SignupStep3Screen() {
           <Text style={styles.modalDoneButtonText}>Done</Text>
         </Pressable>
       </SelectionModal>
+
+
     </View>
   );
 }
@@ -300,6 +278,96 @@ function SelectionModal({
     </Modal>
   );
 }
+
+function InterestBottomSheet({
+        visible,
+        selectedInterests,
+        onClose,
+        onToggle,
+      }: {
+        visible: boolean;
+        selectedInterests: string[];
+        onClose: () => void;
+        onToggle: (value: string) => void;
+      }) {
+        const formatCategoryTitle = (value: string) =>
+          value
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+
+        return (
+          <Modal
+            transparent
+            animationType="slide"
+            visible={visible}
+            onRequestClose={onClose}
+            statusBarTranslucent
+            navigationBarTranslucent
+          >
+            <Pressable style={styles.sheetOverlay} onPress={onClose}>
+              <Pressable style={styles.sheetCard} onPress={() => {}}>
+                <View style={styles.sheetHandle} />
+
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetTitle}>Select Interests</Text>
+
+                  <Pressable onPress={onClose}>
+                    <Text style={styles.sheetDoneText}>Done</Text>
+                  </Pressable>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.sheetScrollContent}
+                >
+                  {Object.entries(INTERESTS_BY_CATEGORY).map(([category, options]) => (
+                    <View key={category} style={styles.categorySection}>
+                      <Text style={styles.categoryTitle}>
+                        {formatCategoryTitle(category)}
+                      </Text>
+
+                      <View style={styles.chipsContainer}>
+                        {options.map((option) => {
+                          const selected = selectedInterests.includes(option);
+
+                          return (
+                            <Pressable
+                              key={option}
+                              onPress={() => onToggle(option)}
+                              style={[
+                                styles.interestChip,
+                                selected && styles.interestChipSelected,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.interestChipText,
+                                  selected && styles.interestChipTextSelected,
+                                ]}
+                              >
+                                {option}
+                              </Text>
+
+                              {selected && (
+                                <Ionicons
+                                  name="close"
+                                  size={12}
+                                  color="#FFF"
+                                  style={styles.interestChipIcon}
+                                />
+                              )}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        );
+      }
 
 const styles = StyleSheet.create({
   container: {
@@ -473,5 +541,101 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    justifyContent: 'flex-end',
+  },
+
+  sheetCard: {
+    height: '72%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
+  },
+
+  sheetHandle: {
+    width: 46,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#D0D0D0',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4C2376',
+  },
+
+  sheetDoneText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#D85BC7',
+  },
+
+  sheetScrollContent: {
+    paddingBottom: 20,
+  },
+
+  categorySection: {
+    marginBottom: 20,
+  },
+
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#242424',
+    marginBottom: 10,
+  },
+
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+
+  interestChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#D8D8D8',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+  },
+
+  interestChipSelected: {
+    backgroundColor: '#D85BC7',
+    borderColor: '#D85BC7',
+  },
+
+  interestChipText: {
+    fontSize: 12,
+    color: '#5F5F5F',
+  },
+
+  interestChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+
+  interestChipIcon: {
+    marginLeft: 4,
   },
 });

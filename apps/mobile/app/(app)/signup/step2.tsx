@@ -47,43 +47,43 @@ export default function SignupStep2Screen() {
 
     if (!firstName.trim()) {
       setErrors({ firstName: 'First name is required' });
-      Alert.alert('Error', 'First name is required');
+//       Alert.alert('Error', 'First name is required');
       return false;
     }
 
     if (!lastName.trim()) {
       setErrors({ lastName: 'Last name is required' });
-      Alert.alert('Error', 'Last name is required');
+//       Alert.alert('Error', 'Last name is required');
       return false;
     }
 
     if (!emailTrimmed) {
       setErrors({ email: 'Email is required' });
-      Alert.alert('Error', 'Email is required');
+//       Alert.alert('Error', 'Email is required');
       return false;
     }
 
     if (!emailRegex.test(emailTrimmed)) {
       setErrors({ email: 'Please enter a valid email address' });
-      Alert.alert('Error', 'Please enter a valid email address');
+//       Alert.alert('Error', 'Please enter a valid email address');
       return false;
     }
 
     if (!password.trim()) {
       setErrors({ password: 'Password is required' });
-      Alert.alert('Error', 'Password is required');
+//       Alert.alert('Error', 'Password is required');
       return false;
     }
 
     if (!confirmPassword.trim()) {
       setErrors({ confirmPassword: 'Please confirm your password' });
-      Alert.alert('Error', 'Please confirm your password');
+//       Alert.alert('Error', 'Please confirm your password');
       return false;
     }
 
     if (password !== confirmPassword) {
       setErrors({ confirmPassword: 'Passwords do not match' });
-      Alert.alert('Error', 'Passwords do not match');
+//       Alert.alert('Error', 'Passwords do not match');
       return false;
     }
 

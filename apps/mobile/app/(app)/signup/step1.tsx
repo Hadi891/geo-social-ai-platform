@@ -25,7 +25,7 @@ export default function SignupStep1Screen() {
 
       <View style={styles.content}>
         <Image
-          source={require('@/assets/images/tempLogo.png')}
+          source={require('@/assets/images/logo.png')}
           style={styles.logo}
           contentFit="contain"
         />
@@ -117,9 +117,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   logo: {
-    width: 95,
-    height: 95,
-    marginBottom: 28,
+    width: 130,
+    height: 130,
   },
   title: {
     fontSize: 34,

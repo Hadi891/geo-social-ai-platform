@@ -8,17 +8,38 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
 
   const handleLogin = () => {
     const emailTrimmed = email.trim();
+    const passwordTrimmed = password.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailRegex.test(emailTrimmed)) {
-      alert('Please enter a valid email address');
+    let newErrors = {
+      email: '',
+      password: '',
+    };
+
+    if (!emailTrimmed) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(emailTrimmed)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!passwordTrimmed) {
+      newErrors.password = 'Password is required';
+    }
+
+    setErrors(newErrors);
+
+    if (newErrors.email || newErrors.password) {
       return;
     }
 
-    router.replace('/(tabs)/home');
+    router.replace('/home');
   };
 
   return (
@@ -36,12 +57,12 @@ export default function LoginScreen() {
       />
 
       <Pressable style={styles.backButton} onPress={() => router.replace('/')}>
-                <Text style={styles.backButtonText}>←</Text>
+        <Text style={styles.backButtonText}>←</Text>
       </Pressable>
 
       <View style={styles.content}>
         <Image
-          source={require('@/assets/images/tempLogo.png')}
+          source={require('@/assets/images/logo.png')}
           style={styles.logo}
           contentFit="contain"
         />
@@ -49,25 +70,41 @@ export default function LoginScreen() {
         <Text style={styles.title}>Login</Text>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>
+            Email <Text style={styles.required}>*</Text>
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.email ? styles.inputError : null]}
             placeholder="Email"
             placeholderTextColor="#999"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (errors.email) setErrors({ ...errors, email: '' });
+            }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={styles.label}>
+            Password <Text style={styles.required}>*</Text>
+          </Text>
+          <View
+            style={[
+              styles.passwordContainer,
+              errors.password ? styles.inputError : null,
+            ]}
+          >
             <TextInput
               style={styles.passwordInput}
               placeholder="Password"
               placeholderTextColor="#999"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors({ ...errors, password: '' });
+              }}
               secureTextEntry={!showPassword}
             />
 
@@ -78,7 +115,18 @@ export default function LoginScreen() {
                 color="#777"
               />
             </Pressable>
+
           </View>
+          {errors.password ? (
+            <Text style={styles.errorText}>{errors.password}</Text>
+          ) : null}
+
+          <Pressable
+            style={styles.forgotPasswordButton}
+            onPress={() => router.push('/login/forgotPassword')}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </Pressable>
 
           <Pressable style={styles.button} onPress={handleLogin}>
             <Text style={styles.buttonText}>Login</Text>
@@ -109,21 +157,20 @@ const styles = StyleSheet.create({
     height: 150,
   },
   backButton: {
-        position: 'absolute',
-        top: 55,
-        left: 20,
-        zIndex: 10,
-        width: 36,
-        height: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-
-      backButtonText: {
-        fontSize: 30,
-        color: '#4C2376',
-        fontWeight: '900',
-      },
+    position: 'absolute',
+    top: 55,
+    left: 20,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    fontSize: 30,
+    color: '#4C2376',
+    fontWeight: '900',
+  },
   content: {
     flex: 1,
     alignItems: 'center',
@@ -131,9 +178,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   logo: {
-    width: 90,
-    height: 90,
-    marginBottom: 20,
+    width: 130,
+    height: 130,
   },
   title: {
     fontSize: 30,
@@ -152,15 +198,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
+  required: {
+    color: 'red',
+  },
   input: {
     width: '100%',
     height: 48,
     backgroundColor: '#EFEFEF',
     borderRadius: 999,
     paddingHorizontal: 18,
-    marginBottom: 18,
+    marginBottom: 6,
     fontSize: 14,
     color: '#222',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   passwordContainer: {
     width: '100%',
@@ -168,16 +219,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFEFEF',
     borderRadius: 999,
     paddingHorizontal: 18,
-    marginBottom: 18,
+    marginBottom: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   passwordInput: {
     flex: 1,
     fontSize: 14,
     color: '#222',
     marginRight: 10,
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginLeft: 8,
+    marginBottom: 12,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 18,
+    marginRight: 4,
+  },
+  forgotPasswordText: {
+    color: '#D85BC7',
+    fontSize: 13,
+    fontWeight: '600',
   },
   button: {
     marginTop: 10,
