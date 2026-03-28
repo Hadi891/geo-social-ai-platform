@@ -272,7 +272,6 @@ export default function SignupStep2Screen() {
           <View style={[styles.dot, styles.activeDot]} />
           <View style={styles.dot} />
           <View style={styles.dot} />
-          <View style={styles.dot} />
         </View>
       </View>
     </View>

@@ -24,7 +24,6 @@ const MAX_TOTAL_INTERESTS = 10;
 const MAX_INTERESTS_PER_CATEGORY = 3;
 
 const MINIMUM_AGE = 18;
-const MIN_LOOKING_FOR_REQUIRED = 1;
 
 const INTEREST_CATEGORY_BY_OPTION = Object.entries(INTERESTS_BY_CATEGORY).reduce(
   (acc, [category, options]) => {
@@ -91,7 +90,7 @@ export default function SignupStep3Screen() {
   const [interests, setInterests] = useState<string[]>([]);
   const [interestsModalVisible, setInterestsModalVisible] = useState(false);
 
-  const [lookingFor, setLookingFor] = useState<string[]>([]);
+  const [lookingFor, setLookingFor] = useState('');
   const [lookingForModalVisible, setLookingForModalVisible] = useState(false);
 
   const [error, setError] = useState<{
@@ -162,17 +161,13 @@ export default function SignupStep3Screen() {
     }));
   };
 
-  const toggleLookingFor = (value: string) => {
-    if (lookingFor.includes(value)) {
-      setLookingFor((prev) => prev.filter((item) => item !== value));
-    } else {
-      setLookingFor((prev) => [...prev, value]);
-    }
-
+  const selectLookingFor = (value: string) => {
+    setLookingFor(value);
     setError((prev) => ({
       ...prev,
       lookingFor: '',
     }));
+    setLookingForModalVisible(false);
   };
 
   const handleNext = () => {
@@ -201,8 +196,8 @@ export default function SignupStep3Screen() {
           newError.interests = `Select at least ${MIN_INTERESTS_REQUIRED} interests`;
         }
 
-        if (lookingFor.length < MIN_LOOKING_FOR_REQUIRED) {
-          newError.lookingFor = `Select at least ${MIN_LOOKING_FOR_REQUIRED} option`;
+        if (!lookingFor) {
+          newError.lookingFor = 'Please select what you are looking for';
         }
 
         setError(newError);
@@ -318,7 +313,7 @@ export default function SignupStep3Screen() {
                 numberOfLines={1}
                 style={[styles.selectText, lookingFor.length === 0 && styles.placeholderText]}
               >
-                {renderSelectionText(lookingFor, 'Choose option(s) ..')}
+                {lookingFor || 'Choose an option ..'}
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#7A7A7A" />
             </Pressable>
@@ -342,8 +337,6 @@ export default function SignupStep3Screen() {
           <View style={styles.dot} />
           <View style={[styles.dot, styles.activeDot]} />
           <View style={styles.dot} />
-          <View style={styles.dot} />
-
         </View>
       </View>
 
@@ -408,23 +401,18 @@ export default function SignupStep3Screen() {
         title="Select What You Want"
         onClose={() => setLookingForModalVisible(false)}
       >
-        {LOOKING_FOR_OPTIONS.map((option) => {
-          const selected = lookingFor.includes(option);
-          return (
-            <Pressable
-              key={option}
-              style={styles.optionRow}
-              onPress={() => toggleLookingFor(option)}
-            >
-              <Text style={styles.optionText}>{option}</Text>
-              <Ionicons
-                name={selected ? 'checkbox-outline' : 'square-outline'}
-                size={20}
-                color={selected ? '#7C57C8' : '#888'}
-              />
-            </Pressable>
-          );
-        })}
+        {LOOKING_FOR_OPTIONS.map((option) => (
+          <Pressable
+            key={option}
+            style={styles.optionRow}
+            onPress={() => selectLookingFor(option)}
+          >
+            <Text style={styles.optionText}>{option}</Text>
+            {lookingFor === option && (
+              <Ionicons name="checkmark" size={18} color="#7C57C8" />
+            )}
+          </Pressable>
+        ))}
 
         <Pressable
           style={styles.modalDoneButton}

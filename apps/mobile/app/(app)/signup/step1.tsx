@@ -67,7 +67,6 @@ export default function SignupStep1Screen() {
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
-          <View style={styles.dot} />
         </View>
       </View>
     </View>
