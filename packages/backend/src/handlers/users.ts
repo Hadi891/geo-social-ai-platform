@@ -6,6 +6,39 @@ import { parseBody, isString, isInt } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
+export async function handleSavePhoto(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ image_url: string }>(event.body);
+  if (!body || !isString(body.image_url)) return badRequest("image_url is required");
+
+  try {
+    const userResult = await db.query("SELECT id FROM users WHERE cognito_sub = $1", [claims.sub]);
+    if (userResult.rowCount === 0) return notFound("User profile not found");
+    const userId = userResult.rows[0].id;
+
+    await db.query(
+      `INSERT INTO photos (id, user_id, image_url, is_profile_photo, position)
+       VALUES ($1, $2, $3, TRUE, 0)
+       ON CONFLICT ON CONSTRAINT one_profile_photo_per_user
+       DO NOTHING`,
+      [uuidv4(), userId, body.image_url]
+    );
+
+    // Update via UPDATE in case ON CONFLICT DO NOTHING skipped the insert
+    await db.query(
+      `UPDATE photos SET image_url = $1 WHERE user_id = $2 AND is_profile_photo = TRUE`,
+      [body.image_url, userId]
+    );
+
+    return ok({ image_url: body.image_url });
+  } catch (err) {
+    logError("/photos POST", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
 type CreateUserBody = {
   name?: string;
   age?: number;
@@ -22,8 +55,12 @@ export async function handleGetUser(event: APIGatewayProxyEvent) {
 
   try {
     const result = await db.query(
-      `SELECT id, cognito_sub, email, name, age, bio, gender, sexual_orientation, interests, introversion_score, created_at, updated_at
-       FROM users WHERE cognito_sub = $1`,
+      `SELECT u.id, u.cognito_sub, u.email, u.name, u.age, u.bio, u.gender,
+              u.sexual_orientation, u.interests, u.introversion_score, u.created_at, u.updated_at,
+              p.image_url AS profile_photo_url
+       FROM users u
+       LEFT JOIN photos p ON p.user_id = u.id AND p.is_profile_photo = TRUE
+       WHERE u.cognito_sub = $1`,
       [claims.sub]
     );
 

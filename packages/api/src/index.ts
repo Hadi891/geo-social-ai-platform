@@ -33,6 +33,7 @@ export type UserProfile = {
   sexual_orientation: string | null;
   interests: string[] | null;
   introversion_score: number;
+  profile_photo_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +102,27 @@ export async function uploadToS3(uploadUrl: string, imageUri: string, contentTyp
     body: blob,
   });
   if (!upload.ok) throw new Error(`S3 upload failed (${upload.status})`);
+}
+
+// ── GET /location ─────────────────────────────────────────────────────────────
+
+export async function getMyLocation(token: string): Promise<{ latitude: number; longitude: number } | null> {
+  const res = await apiFetch(token, "/location", { method: "GET" });
+  if (res.status === 404) return null;
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /location failed (${res.status})`);
+  return body as { latitude: number; longitude: number };
+}
+
+// ── POST /photos ──────────────────────────────────────────────────────────────
+
+export async function saveProfilePhoto(token: string, image_url: string): Promise<void> {
+  const res = await apiFetch(token, "/photos", {
+    method: "POST",
+    body: JSON.stringify({ image_url }),
+  });
+  const body = await res.json().catch(() => ({})) as { message?: string };
+  if (!res.ok) throw new Error(body.message ?? `POST /photos failed (${res.status})`);
 }
 
 // ── GET /nearby ───────────────────────────────────────────────────────────────

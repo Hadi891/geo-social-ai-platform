@@ -19,7 +19,8 @@ import InterestChips from '@/components/profile/InterestChips';
 import EditProfileSection from '@/components/profile/EditProfileSection';
 import LogoutButton from '@/components/profile/LogoutButton';
 import { useAuth } from '@/context/AuthContext';
-import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3 } from '@repo/api';
+import * as Location from 'expo-location';
+import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation } from '@repo/api';
 
 type UserProfile = {
   id: string;
@@ -97,19 +98,40 @@ export default function ProfileScreen() {
   const fetchProfile = useCallback(async () => {
     try {
       const token = await getToken();
-      const data = await getMyProfile(token);
+      const [data, locationData] = await Promise.all([
+        getMyProfile(token),
+        getMyLocation(token).catch(() => null),
+      ]);
+
+      let locationLabel = '';
+      if (locationData) {
+        try {
+          const [geo] = await Location.reverseGeocodeAsync({
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+          });
+          locationLabel = [geo?.city, geo?.country].filter(Boolean).join(', ');
+        } catch {
+          locationLabel = `${locationData.latitude.toFixed(2)}, ${locationData.longitude.toFixed(2)}`;
+        }
+      }
+
       const { firstName, lastName } = splitName(data.name);
+      const profileImage: string | number = data.profile_photo_url
+        ? { uri: data.profile_photo_url } as any
+        : require('@/assets/images/logo.png');
+
       const loaded: UserProfile = {
         id: data.id,
         firstName,
         lastName,
         age: data.age ?? null,
-        location: '',
+        location: locationLabel,
         bio: data.bio ?? '',
         interests: data.interests ?? [],
         birthDate: '',
         email: data.email,
-        profileImage: require('@/assets/images/logo.png'),
+        profileImage,
         matches: 0,
         friends: 0,
         intrusionScore: data.introversion_score,
@@ -187,11 +209,12 @@ export default function ProfileScreen() {
     try {
       const token = await getToken();
 
-      // Upload photo to S3 if a new one was picked
+      // Upload photo to S3 if a new one was picked (string = local URI from picker)
       let photoUrl: string | null = null;
       if (typeof editableProfile.profileImage === 'string') {
         const { upload_url, key } = await getUploadUrl(token, 'profile-images', 'image/jpeg');
         await uploadToS3(upload_url, editableProfile.profileImage, 'image/jpeg');
+        await saveProfilePhoto(token, key);
         photoUrl = key;
       }
 

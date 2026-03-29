@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { handleGetUser, handleCreateUser } from "./src/handlers/users";
-import { handleUpdateLocation } from "./src/handlers/location";
+import { handleGetUser, handleCreateUser, handleSavePhoto } from "./src/handlers/users";
+import { handleGetLocation, handleUpdateLocation } from "./src/handlers/location";
 import { handleGetNearby } from "./src/handlers/nearby";
 import { handleChat, handleMarkRead, handleEditMessage, handleDeleteMessage } from "./src/handlers/chat";
 import { handleGetUploadUrl } from "./src/handlers/upload-url";
@@ -23,7 +23,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   if (method === "GET"  && path === "/users") return handleGetUser(event);
   if (method === "POST" && path === "/users") return handleCreateUser(event);
+  if (method === "GET"  && path === "/location") return handleGetLocation(event);
   if (method === "POST" && path === "/location") return handleUpdateLocation(event);
+  if (method === "POST" && path === "/photos") return handleSavePhoto(event);
   if (method === "GET" && path === "/nearby") return handleGetNearby(event);
   if (path === "/chat") return handleChat(event);
   if (method === "POST" && path === "/upload-url") return handleGetUploadUrl(event);

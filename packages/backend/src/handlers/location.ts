@@ -18,6 +18,27 @@ function isValidLatLng(lat: unknown, lng: unknown): lat is number {
   );
 }
 
+export async function handleGetLocation(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  try {
+    const result = await db.query(
+      `SELECT l.latitude, l.longitude
+       FROM locations l
+       JOIN users u ON u.id = l.user_id
+       WHERE u.cognito_sub = $1`,
+      [claims.sub]
+    );
+
+    if (result.rowCount === 0) return notFound("Location not found");
+    return ok(result.rows[0]);
+  } catch (err) {
+    logError("/location GET", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
 export async function handleUpdateLocation(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
   if (!claims) return unauthorized();
