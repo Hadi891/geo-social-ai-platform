@@ -15,8 +15,11 @@ import { handleConversationState } from "./src/handlers/conversationState";
 import { notFound, badRequest } from "./src/utils/response";
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  const method = event.httpMethod;
-  const path = event.path;
+  // Support both REST API (v1) and HTTP API (v2 payload format)
+  const method: string = event.httpMethod ?? (event as any).requestContext?.http?.method ?? "";
+  const rawPath: string = event.path ?? (event as any).rawPath ?? "";
+  const stage: string = (event as any).requestContext?.stage ?? "";
+  const path: string = stage && rawPath.startsWith(`/${stage}/`) ? rawPath.slice(stage.length + 1) : rawPath;
 
   if (method === "POST" && path === "/users") return handleCreateUser(event);
   if (method === "POST" && path === "/location") return handleUpdateLocation(event);

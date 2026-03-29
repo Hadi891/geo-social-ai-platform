@@ -1,9 +1,13 @@
+import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
+import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(app)" />
-    </Stack>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(app)" />
+      </Stack>
+    </AuthProvider>
   );
 }

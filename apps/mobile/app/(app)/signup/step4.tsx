@@ -1,29 +1,134 @@
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Alert,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { createUserProfile, updateLocation } from '@repo/api';
 
-const PLAN_OPTIONS = ['Plan 1', 'Plan 2', 'Plan 3'];
+
+function ageFromDOB(dob: string): number | undefined {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) return undefined;
+  const [dd, mm, yyyy] = dob.split('/');
+  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const had =
+    today.getMonth() > date.getMonth() ||
+    (today.getMonth() === date.getMonth() && today.getDate() >= date.getDate());
+  return had ? age : age - 1;
+}
 
 export default function SignupStep4Screen() {
-  const [description, setDescription] = useState('');
-  const [preferredPlan, setPreferredPlan] = useState('');
-  const [planModalVisible, setPlanModalVisible] = useState(false);
+  const { signupData, updateSignupData, doSignUp, doConfirmSignUp, doSignIn, doResendCode } = useAuth();
+  const [description, setDescription] = useState(signupData.description ?? '');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   const [verifyModalVisible, setVerifyModalVisible] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [otpVisible, setOtpVisible] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+
+  // Start 60s cooldown when OTP modal opens
+  useEffect(() => {
+    if (otpVisible) setResendCooldown(60);
+  }, [otpVisible]);
+
+  // Count down every second
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    const { email } = signupData;
+    if (!email) return;
+    setResendLoading(true);
+    setOtpError('');
+    try {
+      await doResendCode(email);
+      setResendCooldown(60);
+    } catch (e: any) {
+      setOtpError(e.message ?? 'Failed to resend code');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    const { email, password } = signupData;
+    if (!email || !password) {
+      setApiError('Email or password missing. Please go back to step 2.');
+      return;
+    }
+    updateSignupData({ description });
+    setLoading(true);
+    setApiError('');
+    try {
+      await doSignUp(email, password);
+      setOtpVisible(true);
+    } catch (e: any) {
+      if (e.code === 'UsernameExistsException' || e.name === 'UsernameExistsException') {
+        setOtpVisible(true);
+      } else {
+        setApiError(e.message ?? 'Sign up failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmOtp = async () => {
+    const { email, password, firstName, lastName, dateOfBirth, gender, interests, lookingFor } = signupData;
+    if (!email || !password) return;
+    if (!otpCode.trim()) { setOtpError('Please enter the verification code'); return; }
+    setLoading(true);
+    setOtpError('');
+    try {
+      await doConfirmSignUp(email, otpCode.trim());
+      const token = await doSignIn(email, password);
+      const age = dateOfBirth ? ageFromDOB(dateOfBirth) : undefined;
+      await createUserProfile(token, {
+        name: [firstName, lastName].filter(Boolean).join(' ') || undefined,
+        age,
+        bio: description || undefined,
+        gender: gender || undefined,
+        sexual_orientation: lookingFor || undefined,
+        interests: interests?.length ? interests : undefined,
+      });
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({});
+          await updateLocation(token, { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        }
+      } catch (locErr: any) {
+        console.warn('Location error:', locErr?.message ?? locErr);
+      }
+      router.replace('/home');
+    } catch (e: any) {
+      setOtpError(e.message ?? 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -80,28 +185,6 @@ export default function SignupStep4Screen() {
           </View>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Prefered Plan</Text>
-            <Pressable
-              style={styles.selectBox}
-              onPress={() => setPlanModalVisible(true)}
-            >
-              <Text
-                style={[
-                  styles.selectText,
-                  !preferredPlan && styles.placeholderText,
-                ]}
-              >
-                {preferredPlan || 'Choose an option ..'}
-              </Text>
-              <Ionicons
-                name="chevron-down-outline"
-                size={16}
-                color="#7A7A7A"
-              />
-            </Pressable>
-          </View>
-
-          <View style={styles.fieldBlock}>
             <Text style={styles.label}>Profile Picture</Text>
 
             <Pressable style={styles.imagePlaceholder} onPress={pickImage}>
@@ -142,12 +225,16 @@ export default function SignupStep4Screen() {
         </View>
 
         {isVerified && (
+          <>
+            {apiError ? <Text style={styles.apiErrorText}>{apiError}</Text> : null}
             <Pressable
-                    style={styles.signupButton}
-                    onPress={() => router.replace('/home')}
-                  >
-                    <Text style={styles.signupButtonText}>Sign up →</Text>
+              style={[styles.signupButton, loading && styles.verifyButtonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+              <Text style={styles.signupButtonText}>{loading ? 'Please wait...' : 'Sign up →'}</Text>
             </Pressable>
+          </>
         )}
 
 
@@ -190,51 +277,51 @@ export default function SignupStep4Screen() {
       </Modal>
 
 
-      <SelectionModal
-        visible={planModalVisible}
-        title="Select Plan"
-        onClose={() => setPlanModalVisible(false)}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={otpVisible}
+        onRequestClose={() => setOtpVisible(false)}
       >
-        {PLAN_OPTIONS.map((option) => (
-          <Pressable
-            key={option}
-            style={styles.optionRow}
-            onPress={() => {
-              setPreferredPlan(option);
-              setPlanModalVisible(false);
-            }}
-          >
-            <Text style={styles.optionText}>{option}</Text>
-            {preferredPlan === option && (
-              <Ionicons name="checkmark" size={18} color="#7C57C8" />
-            )}
+        <Pressable style={styles.modalOverlay} onPress={() => setOtpVisible(false)}>
+          <Pressable style={styles.verifyModalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Check your email</Text>
+            <Text style={styles.verifyModalText}>
+              Enter the verification code sent to {signupData.email}.
+            </Text>
+            <TextInput
+              style={[styles.otpInput, otpError ? styles.otpInputError : null]}
+              placeholder="000000"
+              placeholderTextColor="#9B9B9B"
+              value={otpCode}
+              onChangeText={(t) => { setOtpCode(t); setOtpError(''); }}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+            {otpError ? <Text style={styles.otpErrorText}>{otpError}</Text> : null}
+            <Pressable
+              style={[styles.modalVerifyButton, loading && styles.verifyButtonDisabled]}
+              onPress={handleConfirmOtp}
+              disabled={loading}
+            >
+              <Text style={styles.modalVerifyButtonText}>
+                {loading ? 'Verifying...' : 'Confirm'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.resendButton, (resendCooldown > 0 || resendLoading) && styles.resendButtonDisabled]}
+              onPress={handleResend}
+              disabled={resendCooldown > 0 || resendLoading}
+            >
+              <Text style={[styles.resendButtonText, (resendCooldown > 0 || resendLoading) && styles.resendButtonTextDisabled]}>
+                {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+              </Text>
+            </Pressable>
           </Pressable>
-        ))}
-      </SelectionModal>
-    </View>
-  );
-}
-
-function SelectionModal({
-  visible,
-  title,
-  onClose,
-  children,
-}: {
-  visible: boolean;
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalCard} onPress={() => {}}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>{children}</ScrollView>
         </Pressable>
-      </Pressable>
-    </Modal>
+      </Modal>
+
+    </View>
   );
 }
 
@@ -468,5 +555,50 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  otpInput: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 20,
+    letterSpacing: 6,
+    textAlign: 'center',
+    color: '#222',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  otpInputError: {
+    borderColor: '#D93025',
+  },
+  otpErrorText: {
+    color: '#D93025',
+    fontSize: 12,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  apiErrorText: {
+    color: '#D93025',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  resendButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  resendButtonDisabled: {
+    opacity: 0.5,
+  },
+  resendButtonText: {
+    fontSize: 13,
+    color: '#D85BC7',
+    fontWeight: '600',
+  },
+  resendButtonTextDisabled: {
+    color: '#9B9B9B',
   },
 });

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import {
   Alert,
   Modal,
@@ -15,9 +16,9 @@ import {
   View,
 } from 'react-native';
 
-const GENDER_OPTIONS = ['Male', 'Female', 'Karen', 'Prefer not to say'];
+const GENDER_OPTIONS = ['Male', 'Female', 'Prefer not to say'];
 const INTERESTS_BY_CATEGORY = require('@/assets/interests.json') as Record<string, string[]>;
-const LOOKING_FOR_OPTIONS = ['Looking 1', 'Looking 2', 'Looking 3'];
+const LOOKING_FOR_OPTIONS = ['Males', 'Females', 'Both'];
 
 const MIN_INTERESTS_REQUIRED = 3;
 const MAX_TOTAL_INTERESTS = 10;
@@ -81,16 +82,17 @@ function getAgeFromDate(date: Date) {
 }
 
 export default function SignupStep3Screen() {
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const { signupData, updateSignupData } = useAuth();
+  const [dateOfBirth, setDateOfBirth] = useState(signupData.dateOfBirth ?? '');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [gender, setGender] = useState('');
+  const [gender, setGender] = useState(signupData.gender ?? '');
   const [genderModalVisible, setGenderModalVisible] = useState(false);
 
-  const [interests, setInterests] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>(signupData.interests ?? []);
   const [interestsModalVisible, setInterestsModalVisible] = useState(false);
 
-  const [lookingFor, setLookingFor] = useState('');
+  const [lookingFor, setLookingFor] = useState(signupData.lookingFor ?? '');
   const [lookingForModalVisible, setLookingForModalVisible] = useState(false);
 
   const [error, setError] = useState<{
@@ -204,6 +206,7 @@ export default function SignupStep3Screen() {
 
         if (Object.keys(newError).length > 0) return;
 
+        updateSignupData({ dateOfBirth, gender, interests, lookingFor });
         router.push('/signup/step4');
   }
 

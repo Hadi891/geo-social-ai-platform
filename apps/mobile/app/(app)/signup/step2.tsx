@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import {
   Alert,
   Pressable,
@@ -12,26 +13,42 @@ import {
 } from 'react-native';
 
 export default function SignupStep2Screen() {
+  const { signupData, updateSignupData } = useAuth();
 //   const [suggestPassword, setSuggestPassword] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState(signupData.firstName ?? '');
+  const [lastName, setLastName] = useState(signupData.lastName ?? '');
+  const [email, setEmail] = useState(signupData.email ?? '');
+  const [password, setPassword] = useState(signupData.password ?? '');
+  const [confirmPassword, setConfirmPassword] = useState(signupData.password ?? '');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const randomPasswordGenerator = (length : number) => {
-      var result           = '';
-      var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!$_#';
-      var charactersLength = characters.length;
-      for ( var i = 0; i < length; i++ ) {
-          result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      }
-      return result;
-  }
+  const randomPasswordGenerator = (length: number) => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%^&*';
+    const all = upper + lower + digits + special;
+
+    // Guarantee at least one of each type required by Cognito
+    const required = [
+      upper.charAt(Math.floor(Math.random() * upper.length)),
+      lower.charAt(Math.floor(Math.random() * lower.length)),
+      digits.charAt(Math.floor(Math.random() * digits.length)),
+      special.charAt(Math.floor(Math.random() * special.length)),
+    ];
+
+    const rest = Array.from({ length: length - required.length }, () =>
+      all.charAt(Math.floor(Math.random() * all.length))
+    );
+
+    // Shuffle so the required chars aren't always at fixed positions
+    return [...required, ...rest]
+      .sort(() => Math.random() - 0.5)
+      .join('');
+  };
 
   const handleSuggestPassword = () => {
     const generated = randomPasswordGenerator(12);
@@ -48,12 +65,6 @@ export default function SignupStep2Screen() {
     if (!firstName.trim()) {
       setErrors({ firstName: 'First name is required' });
 //       Alert.alert('Error', 'First name is required');
-      return false;
-    }
-
-    if (!lastName.trim()) {
-      setErrors({ lastName: 'Last name is required' });
-//       Alert.alert('Error', 'Last name is required');
       return false;
     }
 
@@ -112,7 +123,7 @@ export default function SignupStep2Screen() {
 
       <View style={styles.content}>
 
-        <Text style={styles.title}>Login Information</Text>
+        <Text style={styles.title}>SignUp Information</Text>
 
         <View style={styles.form}>
             <View style={styles.nameRow}>
@@ -137,7 +148,7 @@ export default function SignupStep2Screen() {
 
               <View style={styles.halfField}>
                 <Text style={styles.label}>
-                  Last Name <Text style={styles.required}>*</Text>
+                  Last Name <Text style={styles.required}></Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.lastName && styles.inputError]}
@@ -259,6 +270,7 @@ export default function SignupStep2Screen() {
           style={styles.nextButton}
           onPress={() => {
             if (validateForm()) {
+              updateSignupData({ firstName, lastName, email, password });
               router.push('/signup/step3');
             }
           }}

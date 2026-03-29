@@ -1,27 +1,30 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { updateLocation } from '@repo/api';
 
 export default function LoginScreen() {
+  const { doSignIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [errors, setErrors] = useState({
     email: '',
     password: '',
   });
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const emailTrimmed = email.trim();
     const passwordTrimmed = password.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    let newErrors = {
-      email: '',
-      password: '',
-    };
+    const newErrors = { email: '', password: '' };
 
     if (!emailTrimmed) {
       newErrors.email = 'Email is required';
@@ -39,7 +42,23 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace('/home');
+    setLoading(true);
+    setApiError('');
+    try {
+      const token = await doSignIn(emailTrimmed, passwordTrimmed);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({});
+          await updateLocation(token, { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        }
+      } catch {}
+      router.replace('/home');
+    } catch (e: any) {
+      setApiError(e.message ?? 'Login failed. Check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,8 +147,9 @@ export default function LoginScreen() {
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </Pressable>
 
-          <Pressable style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Login</Text>
+          {apiError ? <Text style={styles.apiErrorText}>{apiError}</Text> : null}
+          <Pressable style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Login'}</Text>
           </Pressable>
         </View>
       </View>
@@ -262,5 +282,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  apiErrorText: {
+    color: '#D93025',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });
