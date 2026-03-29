@@ -1,10 +1,15 @@
 import type { APIGatewayProxyEvent } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString, isInt } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
+
+const s3 = new S3Client({ region: process.env["AWS_REGION"] ?? "eu-north-1" });
+const BUCKET = process.env["S3_BUCKET"] ?? "";
 
 export async function handleSavePhoto(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
@@ -57,7 +62,7 @@ export async function handleGetUser(event: APIGatewayProxyEvent) {
     const result = await db.query(
       `SELECT u.id, u.cognito_sub, u.email, u.name, u.age, u.bio, u.gender,
               u.sexual_orientation, u.interests, u.introversion_score, u.created_at, u.updated_at,
-              p.image_url AS profile_photo_url
+              p.image_url AS profile_photo_key
        FROM users u
        LEFT JOIN photos p ON p.user_id = u.id AND p.is_profile_photo = TRUE
        WHERE u.cognito_sub = $1`,
@@ -65,7 +70,15 @@ export async function handleGetUser(event: APIGatewayProxyEvent) {
     );
 
     if (result.rowCount === 0) return notFound("User profile not found");
-    return ok(result.rows[0]);
+
+    const row = result.rows[0];
+    let profile_photo_url: string | null = null;
+    if (row.profile_photo_key) {
+      const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: row.profile_photo_key });
+      profile_photo_url = await getSignedUrl(s3, cmd, { expiresIn: 3600 });
+    }
+
+    return ok({ ...row, profile_photo_key: undefined, profile_photo_url });
   } catch (err) {
     logError("/users GET", err, { sub: claims.sub });
     return internalError();
