@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   ImageSourcePropType,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import StoryAvatar from '@/components/home/StoryAvatar';
 import MyStoryAvatar from '@/components/home/MyStoryAvatar';
 import PostCard from '@/components/home/PostCard';
 import StoryViewerModal from '@/components/home/StoryViewerModal';
+import AddPostModal from '@/components/home/AddPostModal';
 
 const LOGO_IMAGE = require('@/assets/images/logo.png');
 
@@ -45,7 +47,7 @@ const stories = [
   },
 ];
 
-const posts = [
+const initialPosts = [
   {
     id: '1',
     name: 'Amelia',
@@ -86,6 +88,9 @@ export default function HomeScreen() {
     LOGO_IMAGE,
   ]);
 
+  const [allPosts, setAllPosts] = useState(initialPosts);
+  const [addPostVisible, setAddPostVisible] = useState(false);
+
   const openStoryViewer = (images: ImageSourcePropType[]) => {
     setSelectedStoryImages(images);
     setStoryViewerVisible(true);
@@ -119,46 +124,75 @@ export default function HomeScreen() {
     setMyStoryImages((prev) => [...prev, pickedImage]);
   };
 
+  const handleAddPost = (newPost: {
+    postImageSource: ImageSourcePropType;
+    caption: string;
+    tags: string[];
+  }) => {
+    setAllPosts((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        name: 'You',
+        age: 22,
+        distance: 0,
+        profileImageSource: LOGO_IMAGE,
+        postImageSource: newPost.postImageSource,
+        caption: newPost.caption,
+        tags: newPost.tags,
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <TopBar title="Mingle Home" />
 
       <View style={styles.content}>
         <FlatList
-          data={posts}
+          data={allPosts}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.postsContent}
           ListHeaderComponent={
-            <View style={styles.storiesContainer}>
-              <View style={styles.storiesHeader}>
-                <Text style={styles.sectionTitle}>New Matches</Text>
-                <Text style={styles.seeAll}>SEE ALL</Text>
+            <View>
+              <View style={styles.storiesContainer}>
+                <View style={styles.storiesHeader}>
+                  <Text style={styles.sectionTitle}>New Matches</Text>
+                  <Text style={styles.seeAll}>SEE ALL</Text>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.storiesRow}
+                >
+                  <MyStoryAvatar
+                    imageSource={myStoryImages[myStoryImages.length - 1]}
+                    name="Your story"
+                    storyImages={myStoryImages}
+                    onOpenStories={openStoryViewer}
+                    onAddStory={handleAddStory}
+                  />
+
+                  {stories.map((story) => (
+                    <StoryAvatar
+                      key={story.id}
+                      imageSource={story.imageSource}
+                      name={story.name}
+                      storyImages={story.storyImages}
+                      onOpenStories={openStoryViewer}
+                    />
+                  ))}
+                </ScrollView>
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.storiesRow}
+              <Pressable
+                style={styles.addPostButton}
+                onPress={() => setAddPostVisible(true)}
               >
-                <MyStoryAvatar
-                  imageSource={myStoryImages[myStoryImages.length - 1]}
-                  name="Your story"
-                  storyImages={myStoryImages}
-                  onOpenStories={openStoryViewer}
-                  onAddStory={handleAddStory}
-                />
-
-                {stories.map((story) => (
-                  <StoryAvatar
-                    key={story.id}
-                    imageSource={story.imageSource}
-                    name={story.name}
-                    storyImages={story.storyImages}
-                    onOpenStories={openStoryViewer}
-                  />
-                ))}
-              </ScrollView>
+                <Text style={styles.addPostButtonText}>+ Add a post</Text>
+              </Pressable>
             </View>
           }
           renderItem={({ item }) => (
@@ -179,6 +213,13 @@ export default function HomeScreen() {
         visible={storyViewerVisible}
         images={selectedStoryImages}
         onClose={closeStoryViewer}
+      />
+
+      <AddPostModal
+        visible={addPostVisible}
+        onClose={() => setAddPostVisible(false)}
+        onSubmit={handleAddPost}
+        profileImageSource={LOGO_IMAGE}
       />
     </View>
   );
@@ -211,6 +252,22 @@ const styles = StyleSheet.create({
   },
   storiesRow: {
     paddingTop: 12,
+  },
+  addPostButton: {
+    width: '100%',
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8E5F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EFD4E4',
+  },
+  addPostButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C44A93',
   },
   postsContent: {
     paddingBottom: 18,

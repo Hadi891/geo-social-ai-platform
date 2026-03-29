@@ -13,7 +13,7 @@ type PostCardProps = {
   profileImageSource: ImageSourcePropType;
   name: string;
   age?: number;
-  subtitle: string;
+  distance: string;
   postImageSource: ImageSourcePropType;
   caption: string;
   tags: string[];
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 12,
     paddingBottom: 14,
-    marginBottom: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#EFE7EC',
   },
