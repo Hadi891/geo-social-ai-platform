@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
+
       <Image
         source={require('@/assets/images/topLeftEllipse.png')}
         style={styles.topEllipse}
@@ -18,6 +19,11 @@ export default function WelcomeScreen() {
       />
 
       <View style={styles.content}>
+
+        <Link href="/home" asChild>
+        <Pressable><Text>Temp Home Button</Text></Pressable>
+        </Link>
+
         <Image
           source={require('@/assets/images/logo.png')}
           style={styles.logo}

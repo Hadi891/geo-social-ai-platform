@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type TabKey = 'home' | 'map' | 'assistant' | 'chat' | 'profile';
+export type TabKey = 'home' | 'map' | 'assistant' | 'chat' | 'profile';
 
 type BottomNavBarProps = {
   activeTab: TabKey;
+  onTabPress: (tab: TabKey) => void;
 };
 
 const PINK = '#D85AAF';
@@ -16,13 +17,11 @@ const BG = '#F7F2F6';
 const tabs: {
   key: TabKey;
   label: string;
-  route: string;
   renderIcon: (focused: boolean) => React.ReactNode;
 }[] = [
   {
     key: 'home',
     label: 'HOME',
-    route: '/home',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'home' : 'home-outline'}
@@ -34,7 +33,6 @@ const tabs: {
   {
     key: 'map',
     label: 'MAP',
-    route: '/map',
     renderIcon: (focused) => (
       <Feather
         name="map"
@@ -45,12 +43,11 @@ const tabs: {
   },
   {
     key: 'assistant',
-    label: 'ASS',
-    route: '/assistant',
+    label: 'ASSISTANT',
     renderIcon: (focused) => (
       <MaterialCommunityIcons
         name={focused ? 'robot' : 'robot-outline'}
-        size={20}
+        size={22}
         color={focused ? '#FFFFFF' : INACTIVE}
       />
     ),
@@ -58,7 +55,6 @@ const tabs: {
   {
     key: 'chat',
     label: 'CHAT',
-    route: '/chat',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'chatbubble' : 'chatbubble-outline'}
@@ -70,7 +66,6 @@ const tabs: {
   {
     key: 'profile',
     label: 'PROFILE',
-    route: '/profile',
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? 'person' : 'person-outline'}
@@ -81,9 +76,11 @@ const tabs: {
   },
 ];
 
-export default function BottomNavBar({ activeTab }: BottomNavBarProps) {
+export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.container}>
         {tabs.map((tab) => {
           const focused = activeTab === tab.key;
@@ -93,7 +90,7 @@ export default function BottomNavBar({ activeTab }: BottomNavBarProps) {
               key={tab.key}
               style={styles.tab}
               onPress={() => {
-                if (!focused) router.replace(tab.route);
+                if (!focused) onTabPress(tab.key);
               }}
             >
               {focused ? (
@@ -119,28 +116,20 @@ export default function BottomNavBar({ activeTab }: BottomNavBarProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FCF9FC',
+    paddingTop: 8,
+    paddingHorizontal: 0,
   },
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     backgroundColor: BG,
-    borderRadius: 26,
     paddingTop: 12,
     paddingBottom: 10,
     paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE3EC',
   },
   tab: {
     flex: 1,
