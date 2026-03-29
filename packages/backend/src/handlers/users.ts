@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString, isInt } from "../utils/validation";
-import { created, badRequest, unauthorized, internalError } from "../utils/response";
+import { ok, created, badRequest, unauthorized, notFound, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
 type CreateUserBody = {
@@ -15,6 +15,25 @@ type CreateUserBody = {
   interests?: string[];
   introversion_score?: number;
 };
+
+export async function handleGetUser(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  try {
+    const result = await db.query(
+      `SELECT id, cognito_sub, email, name, age, bio, gender, sexual_orientation, interests, introversion_score, created_at, updated_at
+       FROM users WHERE cognito_sub = $1`,
+      [claims.sub]
+    );
+
+    if (result.rowCount === 0) return notFound("User profile not found");
+    return ok(result.rows[0]);
+  } catch (err) {
+    logError("/users GET", err, { sub: claims.sub });
+    return internalError();
+  }
+}
 
 export async function handleCreateUser(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);

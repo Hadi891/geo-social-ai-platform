@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ImageSourcePropType,
   LayoutChangeEvent,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -16,6 +18,8 @@ import ProfileInfoSection from '@/components/profile/ProfileInfoSection';
 import InterestChips from '@/components/profile/InterestChips';
 import EditProfileSection from '@/components/profile/EditProfileSection';
 import LogoutButton from '@/components/profile/LogoutButton';
+import { useAuth } from '@/context/AuthContext';
+import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3 } from '@repo/api';
 
 type UserProfile = {
   id: string;
@@ -27,7 +31,6 @@ type UserProfile = {
   interests: string[];
   birthDate: string;
   email: string;
-  phone?: string;
   profileImage: string | number;
   matches: number;
   friends: number;
@@ -45,73 +48,98 @@ type FormErrors = {
 
 const calculateAgeFromBirthDate = (birthDate: string) => {
   const parts = birthDate.split('/').map(Number);
-
-  if (parts.length !== 3 || parts.some(Number.isNaN)) {
-    return null;
-  }
-
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
   const [month, day, year] = parts;
   const today = new Date();
-
   let age = today.getFullYear() - year;
-
-  const hadBirthdayThisYear =
+  const hadBirthday =
     today.getMonth() + 1 > month ||
     (today.getMonth() + 1 === month && today.getDate() >= day);
-
-  if (!hadBirthdayThisYear) {
-    age -= 1;
-  }
-
+  if (!hadBirthday) age -= 1;
   return age >= 0 ? age : null;
+};
+
+const splitName = (name: string | null) => {
+  if (!name) return { firstName: '', lastName: '' };
+  const parts = name.trim().split(' ');
+  return { firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') };
 };
 
 const getDisplayName = (firstName: string, lastName: string) =>
   [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
 
-const getImageSource = (
-  image: string | number
-): ImageSourcePropType =>
+const getImageSource = (image: string | number): ImageSourcePropType =>
   typeof image === 'string' ? { uri: image } : image;
 
-const SAMPLE_PROFILE: UserProfile = {
-  id: '1',
-  firstName: 'Mohamad',
-  lastName: 'Ibrahim',
-  age: calculateAgeFromBirthDate('11/07/2003') ?? 22,
-  location: 'Paris, Gif-Sur-Yvette',
-  bio: 'Digital curator and espresso enthusiast. Looking for someone who can debate the merits of vinyl over digital and enjoys late-night walks through the city. ☕️🎶',
-  interests: ['Tennis', 'Hiking', 'Basket', 'Eating', 'Eating Again'],
-  birthDate: '11/07/2003',
-  email: 'mohamad.ibrahim@telecom-paris.fr',
-  profileImage: require('@/assets/images/logo.png'),
-  matches: 2,
-  friends: 200,
-  intrusionScore: 40,
-};
-
 export default function ProfileScreen() {
+  const { getToken, doSignOut } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const [editSectionY, setEditSectionY] = useState(0);
   const [showEditSection, setShowEditSection] = useState(false);
   const [shouldScrollToEdit, setShouldScrollToEdit] = useState(false);
 
-  const [profile, setProfile] = useState<UserProfile>(SAMPLE_PROFILE);
-
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editableProfile, setEditableProfile] = useState<EditableProfileFields>({
-    firstName: SAMPLE_PROFILE.firstName,
-    lastName: SAMPLE_PROFILE.lastName,
-    birthDate: SAMPLE_PROFILE.birthDate,
-    email: SAMPLE_PROFILE.email,
-    bio: SAMPLE_PROFILE.bio,
-    profileImage: SAMPLE_PROFILE.profileImage,
+    firstName: '',
+    lastName: '',
+    birthDate: '',
+    email: '',
+    bio: '',
+    profileImage: require('@/assets/images/logo.png'),
   });
-
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  const displayedAge =
-    calculateAgeFromBirthDate(profile.birthDate) ?? profile.age;
+  const fetchProfile = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const data = await getMyProfile(token);
+      const { firstName, lastName } = splitName(data.name);
+      const loaded: UserProfile = {
+        id: data.id,
+        firstName,
+        lastName,
+        age: data.age ?? 0,
+        location: '',
+        bio: data.bio ?? '',
+        interests: data.interests ?? [],
+        birthDate: '',
+        email: data.email,
+        profileImage: require('@/assets/images/logo.png'),
+        matches: 0,
+        friends: 0,
+        intrusionScore: data.introversion_score,
+      };
+      setProfile(loaded);
+      setEditableProfile({
+        firstName: loaded.firstName,
+        lastName: loaded.lastName,
+        birthDate: loaded.birthDate,
+        email: loaded.email,
+        bio: loaded.bio,
+        profileImage: loaded.profileImage,
+      });
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  useEffect(() => {
+    if (!showEditSection || !shouldScrollToEdit || editSectionY <= 0) return;
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: Math.max(editSectionY - 12, 0), animated: true });
+      setShouldScrollToEdit(false);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [showEditSection, shouldScrollToEdit, editSectionY]);
 
   const handleEditSectionLayout = (event: LayoutChangeEvent) => {
     setEditSectionY(event.nativeEvent.layout.y);
@@ -122,103 +150,85 @@ export default function ProfileScreen() {
     setShouldScrollToEdit(true);
   };
 
-  useEffect(() => {
-    if (!showEditSection || !shouldScrollToEdit || editSectionY <= 0) return;
-
-    const timer = setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
-        y: Math.max(editSectionY - 12, 0),
-        animated: true,
-      });
-      setShouldScrollToEdit(false);
-    }, 80);
-
-    return () => clearTimeout(timer);
-  }, [showEditSection, shouldScrollToEdit, editSectionY]);
-
-  const handleFieldChange = (
-    field: keyof EditableProfileFields,
-    value: string
-  ) => {
-    setEditableProfile((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
+  const handleFieldChange = (field: keyof EditableProfileFields, value: string) => {
+    setEditableProfile((prev) => ({ ...prev, [field]: value }));
     if (field === 'firstName') {
-      setFormErrors((prev) => ({
-        ...prev,
-        firstName: value.trim() ? undefined : prev.firstName,
-      }));
+      setFormErrors((prev) => ({ ...prev, firstName: value.trim() ? undefined : prev.firstName }));
     }
   };
 
   const handlePickProfileImage = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        'Permission needed',
-        'Allow photo library access to change the profile picture.'
-      );
+      Alert.alert('Permission needed', 'Allow photo library access to change the profile picture.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.8,
     });
-
     if (!result.canceled && result.assets?.[0]?.uri) {
-      setEditableProfile((prev) => ({
-        ...prev,
-        profileImage: result.assets[0].uri,
-      }));
+      setEditableProfile((prev) => ({ ...prev, profileImage: result.assets[0].uri }));
     }
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     const trimmedFirstName = editableProfile.firstName.trim();
     const trimmedLastName = editableProfile.lastName.trim();
 
     if (!trimmedFirstName) {
-      setFormErrors({
-        firstName: 'First name is required.',
-      });
+      setFormErrors({ firstName: 'First name is required.' });
       return;
     }
 
-    const nextAge =
-      calculateAgeFromBirthDate(editableProfile.birthDate) ?? profile.age;
+    setSaving(true);
+    try {
+      const token = await getToken();
 
-    const updatedProfile: UserProfile = {
-      ...profile,
-      firstName: trimmedFirstName,
-      lastName: trimmedLastName,
-      birthDate: editableProfile.birthDate,
-      email: editableProfile.email.trim(),
-      bio: editableProfile.bio,
-      profileImage: editableProfile.profileImage,
-      age: nextAge,
-    };
+      // Upload photo to S3 if a new one was picked
+      let photoUrl: string | null = null;
+      if (typeof editableProfile.profileImage === 'string') {
+        const { upload_url, key } = await getUploadUrl(token, 'profile-images', 'image/jpeg');
+        await uploadToS3(upload_url, editableProfile.profileImage, 'image/jpeg');
+        photoUrl = key;
+      }
 
-    setProfile(updatedProfile);
-    setEditableProfile({
-      firstName: updatedProfile.firstName,
-      lastName: updatedProfile.lastName,
-      birthDate: updatedProfile.birthDate,
-      email: updatedProfile.email,
-      bio: updatedProfile.bio,
-      profileImage: updatedProfile.profileImage,
-    });
-    setFormErrors({});
-    setShowEditSection(false);
+      const age = calculateAgeFromBirthDate(editableProfile.birthDate) ?? profile?.age;
+      const name = [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ');
+
+      await createUserProfile(token, {
+        name,
+        age,
+        bio: editableProfile.bio || undefined,
+      });
+
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              firstName: trimmedFirstName,
+              lastName: trimmedLastName,
+              birthDate: editableProfile.birthDate,
+              email: editableProfile.email.trim(),
+              bio: editableProfile.bio,
+              profileImage: photoUrl ?? editableProfile.profileImage,
+              age: age ?? prev.age,
+            }
+          : prev
+      );
+      setFormErrors({});
+      setShowEditSection(false);
+    } catch (e: any) {
+      Alert.alert('Save failed', e.message ?? 'Could not save profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
+    if (!profile) return;
     setEditableProfile({
       firstName: profile.firstName,
       lastName: profile.lastName,
@@ -232,13 +242,37 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    doSignOut();
     router.replace('/');
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <TopBar title="Mingle Profile" />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#7C57C8" />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <View style={styles.container}>
+        <TopBar title="Mingle Profile" />
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error || 'Profile not found'}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const displayedAge = calculateAgeFromBirthDate(profile.birthDate) ?? profile.age;
 
   return (
     <View style={styles.container}>
       <TopBar title="Mingle Profile" />
-
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -272,6 +306,7 @@ export default function ProfileScreen() {
               onChangeProfileImage={handlePickProfileImage}
               onSave={handleSaveChanges}
               onCancel={handleCancel}
+              saving={saving}
             />
           </View>
         )}
@@ -291,5 +326,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 140,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#D93025',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
 });

@@ -20,6 +20,30 @@ export async function apiFetch(
   });
 }
 
+// ── GET /users ────────────────────────────────────────────────────────────────
+
+export type UserProfile = {
+  id: string;
+  cognito_sub: string;
+  email: string;
+  name: string | null;
+  age: number | null;
+  bio: string | null;
+  gender: string | null;
+  sexual_orientation: string | null;
+  interests: string[] | null;
+  introversion_score: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getMyProfile(token: string): Promise<UserProfile> {
+  const res = await apiFetch(token, "/users", { method: "GET" });
+  const body = await res.json().catch(() => ({})) as { message?: string };
+  if (!res.ok) throw new Error((body as any).message ?? `GET /users failed (${res.status})`);
+  return body as UserProfile;
+}
+
 // ── POST /users ───────────────────────────────────────────────────────────────
 
 export type CreateUserPayload = {
@@ -54,6 +78,29 @@ export async function updateLocation(token: string, payload: LocationPayload) {
   const body = await res.json().catch(() => ({})) as { message?: string };
   if (!res.ok) throw new Error(body.message ?? `POST /location failed (${res.status})`);
   return body;
+}
+
+// ── POST /upload-url ──────────────────────────────────────────────────────────
+
+export async function getUploadUrl(token: string, folder: string, file_type: string): Promise<{ upload_url: string; key: string }> {
+  const res = await apiFetch(token, "/upload-url", {
+    method: "POST",
+    body: JSON.stringify({ folder, file_type }),
+  });
+  const body = await res.json().catch(() => ({})) as { message?: string };
+  if (!res.ok) throw new Error((body as any).message ?? `POST /upload-url failed (${res.status})`);
+  return body as { upload_url: string; key: string };
+}
+
+export async function uploadToS3(uploadUrl: string, imageUri: string, contentType: string): Promise<void> {
+  const response = await fetch(imageUri);
+  const blob = await response.blob();
+  const upload = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob,
+  });
+  if (!upload.ok) throw new Error(`S3 upload failed (${upload.status})`);
 }
 
 // ── GET /nearby ───────────────────────────────────────────────────────────────

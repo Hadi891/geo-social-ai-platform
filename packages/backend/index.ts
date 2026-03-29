@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { handleCreateUser } from "./src/handlers/users";
+import { handleGetUser, handleCreateUser } from "./src/handlers/users";
 import { handleUpdateLocation } from "./src/handlers/location";
 import { handleGetNearby } from "./src/handlers/nearby";
 import { handleChat, handleMarkRead, handleEditMessage, handleDeleteMessage } from "./src/handlers/chat";
@@ -21,6 +21,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const stage: string = (event as any).requestContext?.stage ?? "";
   const path: string = stage && rawPath.startsWith(`/${stage}/`) ? rawPath.slice(stage.length + 1) : rawPath;
 
+  if (method === "GET"  && path === "/users") return handleGetUser(event);
   if (method === "POST" && path === "/users") return handleCreateUser(event);
   if (method === "POST" && path === "/location") return handleUpdateLocation(event);
   if (method === "GET" && path === "/nearby") return handleGetNearby(event);

@@ -4,16 +4,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 type ProfileActionButtonsProps = {
   onSave: () => void;
   onCancel: () => void;
+  saving?: boolean;
 };
 
 export default function ProfileActionButtons({
   onSave,
   onCancel,
+  saving,
 }: ProfileActionButtonsProps) {
   return (
     <View style={styles.row}>
-      <Pressable style={styles.saveButton} onPress={onSave}>
-        <Text style={styles.saveText}>Save Changes</Text>
+      <Pressable style={[styles.saveButton, saving && { opacity: 0.6 }]} onPress={onSave} disabled={saving}>
+        <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
       </Pressable>
 
       <Pressable style={styles.cancelButton} onPress={onCancel}>

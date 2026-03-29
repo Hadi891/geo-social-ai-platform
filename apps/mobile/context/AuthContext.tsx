@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { cognitoSignUp, cognitoConfirmSignUp, cognitoSignIn, cognitoGetToken, cognitoResendCode } from '../lib/cognito';
+import { cognitoSignUp, cognitoConfirmSignUp, cognitoSignIn, cognitoGetToken, cognitoResendCode, cognitoSignOut } from '../lib/cognito';
 
 export type SignupFormData = {
   firstName: string;
@@ -28,6 +28,8 @@ type AuthContextType = {
   doResendCode: (email: string) => Promise<void>;
   /** Return the JWT id token for the current session. */
   getToken: () => Promise<string>;
+  /** Sign out and clear the local Cognito session. */
+  doSignOut: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         doSignIn: cognitoSignIn,
         doResendCode: cognitoResendCode,
         getToken: cognitoGetToken,
+        doSignOut: cognitoSignOut,
       }}
     >
       {children}

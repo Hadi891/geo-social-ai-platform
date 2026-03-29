@@ -56,6 +56,12 @@ export function cognitoResendCode(email: string): Promise<void> {
   });
 }
 
+/** Sign out the current user and clear the local session. */
+export function cognitoSignOut(): void {
+  const user = userPool.getCurrentUser();
+  if (user) user.signOut();
+}
+
 /** Get the JWT id token for the currently signed-in user. */
 export function cognitoGetToken(): Promise<string> {
   return new Promise((resolve, reject) => {

@@ -32,6 +32,7 @@ type EditProfileSectionProps = {
   onChangeProfileImage: () => void;
   onSave: () => void;
   onCancel: () => void;
+  saving?: boolean;
 };
 
 export default function EditProfileSection({
@@ -42,6 +43,7 @@ export default function EditProfileSection({
   onChangeProfileImage,
   onSave,
   onCancel,
+  saving,
 }: EditProfileSectionProps) {
   return (
     <View style={styles.card}>
@@ -99,7 +101,7 @@ export default function EditProfileSection({
         multiline
       />
 
-      <ProfileActionButtons onSave={onSave} onCancel={onCancel} />
+      <ProfileActionButtons onSave={onSave} onCancel={onCancel} saving={saving} />
     </View>
   );
 }
