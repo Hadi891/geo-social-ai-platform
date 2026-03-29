@@ -34,8 +34,6 @@ type UserProfile = {
   email: string;
   profileImage: string | number;
   matches: number;
-  friends: number;
-  intrusionScore: number;
 };
 
 type EditableProfileFields = Pick<
@@ -133,8 +131,6 @@ export default function ProfileScreen() {
         email: data.email,
         profileImage,
         matches: 0,
-        friends: 0,
-        intrusionScore: data.introversion_score,
       };
       setProfile(loaded);
       setEditableProfile({
@@ -304,8 +300,6 @@ export default function ProfileScreen() {
         <ProfileHeaderCard
           imageSource={getImageSource(profile.profileImage)}
           matches={profile.matches}
-          friends={profile.friends}
-          intrusionScore={profile.intrusionScore}
         />
 
         <ProfileInfoSection
@@ -313,7 +307,6 @@ export default function ProfileScreen() {
           age={displayedAge}
           location={profile.location}
           bio={profile.bio}
-          relationshipLabel="Following"
           onEditPress={handleEditPress}
         />
 

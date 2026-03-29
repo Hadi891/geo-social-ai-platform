@@ -10,8 +10,6 @@ import {
 type ProfileHeaderCardProps = {
   imageSource: ImageSourcePropType;
   matches: number;
-  friends: number;
-  intrusionScore: number;
 };
 
 const formatCount = (value: number) => {
@@ -22,7 +20,7 @@ const formatCount = (value: number) => {
 };
 
 export default function ProfileHeaderCard(props: ProfileHeaderCardProps) {
-  const { imageSource, matches, friends, intrusionScore } = props;
+  const { imageSource, matches } = props;
 
   return (
     <View style={styles.card}>
@@ -32,16 +30,6 @@ export default function ProfileHeaderCard(props: ProfileHeaderCardProps) {
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{formatCount(matches)}</Text>
           <Text style={styles.statLabel}>MATCHES</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatCount(friends)}</Text>
-          <Text style={styles.statLabel}>FRIENDS</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{intrusionScore}%</Text>
-          <Text style={styles.statLabel}>INTRUSION</Text>
         </View>
       </View>
     </View>

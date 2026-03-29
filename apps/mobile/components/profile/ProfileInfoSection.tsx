@@ -7,7 +7,6 @@ type ProfileInfoSectionProps = {
   age: number | null;
   location: string;
   bio: string;
-  relationshipLabel?: string;
   onEditPress: () => void;
 };
 
@@ -16,7 +15,6 @@ export default function ProfileInfoSection({
   age,
   location,
   bio,
-  relationshipLabel,
   onEditPress,
 }: ProfileInfoSectionProps) {
   return (
@@ -38,12 +36,6 @@ export default function ProfileInfoSection({
           <Ionicons name="location-outline" size={14} color="#8B7A87" />
           <Text style={styles.locationText}>{location}</Text>
         </View>
-
-        {relationshipLabel ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{relationshipLabel}</Text>
-          </View>
-        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -98,17 +90,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8B7A87',
     marginLeft: 4,
-  },
-  badge: {
-    backgroundColor: '#F5D2E9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#9D317E',
   },
   section: {
     marginTop: 18,
