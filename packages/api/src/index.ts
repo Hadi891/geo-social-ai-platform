@@ -39,8 +39,8 @@ export type UserProfile = {
 
 export async function getMyProfile(token: string): Promise<UserProfile> {
   const res = await apiFetch(token, "/users", { method: "GET" });
-  const body = await res.json().catch(() => ({})) as { message?: string };
-  if (!res.ok) throw new Error((body as any).message ?? `GET /users failed (${res.status})`);
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /users failed (${res.status})`);
   return body as UserProfile;
 }
 

@@ -97,7 +97,18 @@ export default function ProfileScreen() {
   const fetchProfile = useCallback(async () => {
     try {
       const token = await getToken();
-      const data = await getMyProfile(token);
+      let data;
+      try {
+        data = await getMyProfile(token);
+      } catch (e: any) {
+        if (e.message?.includes('404') || e.message?.includes('not found') || e.message?.toLowerCase().includes('not found')) {
+          // Profile doesn't exist yet — create an empty one
+          await createUserProfile(token, {});
+          data = await getMyProfile(token);
+        } else {
+          throw e;
+        }
+      }
       const { firstName, lastName } = splitName(data.name);
       const loaded: UserProfile = {
         id: data.id,
