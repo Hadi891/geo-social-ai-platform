@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 type ProfileInfoSectionProps = {
   fullName: string;
-  age: number;
+  age: number | null;
   location: string;
   bio: string;
   relationshipLabel?: string;
@@ -24,8 +24,7 @@ export default function ProfileInfoSection({
       <View style={styles.nameRow}>
         <View style={styles.nameBlock}>
           <Text style={styles.nameText}>
-            {fullName},{'\n'}
-            {age}
+            {fullName || 'Your Name'}{age ? `,\n${age}` : ''}
           </Text>
         </View>
 

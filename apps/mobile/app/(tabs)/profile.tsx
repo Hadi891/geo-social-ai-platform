@@ -25,7 +25,7 @@ type UserProfile = {
   id: string;
   firstName: string;
   lastName: string;
-  age: number;
+  age: number | null;
   location: string;
   bio: string;
   interests: string[];
@@ -97,24 +97,13 @@ export default function ProfileScreen() {
   const fetchProfile = useCallback(async () => {
     try {
       const token = await getToken();
-      let data;
-      try {
-        data = await getMyProfile(token);
-      } catch (e: any) {
-        if (e.message?.includes('404') || e.message?.includes('not found') || e.message?.toLowerCase().includes('not found')) {
-          // Profile doesn't exist yet — create an empty one
-          await createUserProfile(token, {});
-          data = await getMyProfile(token);
-        } else {
-          throw e;
-        }
-      }
+      const data = await getMyProfile(token);
       const { firstName, lastName } = splitName(data.name);
       const loaded: UserProfile = {
         id: data.id,
         firstName,
         lastName,
-        age: data.age ?? 0,
+        age: data.age ?? null,
         location: '',
         bio: data.bio ?? '',
         interests: data.interests ?? [],
@@ -206,7 +195,7 @@ export default function ProfileScreen() {
         photoUrl = key;
       }
 
-      const age = calculateAgeFromBirthDate(editableProfile.birthDate) ?? profile?.age;
+      const age = calculateAgeFromBirthDate(editableProfile.birthDate) ?? profile?.age ?? undefined;
       const name = [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ');
 
       await createUserProfile(token, {
@@ -279,7 +268,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayedAge = calculateAgeFromBirthDate(profile.birthDate) ?? profile.age;
+  const displayedAge = calculateAgeFromBirthDate(profile.birthDate) ?? profile.age ?? null;
 
   return (
     <View style={styles.container}>

@@ -57,13 +57,13 @@ export async function handleCreateUser(event: APIGatewayProxyEvent) {
       `INSERT INTO users (id, cognito_sub, email, name, age, bio, gender, sexual_orientation, interests, introversion_score)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (cognito_sub) DO UPDATE SET
-         name = EXCLUDED.name,
-         age = EXCLUDED.age,
-         bio = EXCLUDED.bio,
-         gender = EXCLUDED.gender,
-         sexual_orientation = EXCLUDED.sexual_orientation,
-         interests = EXCLUDED.interests,
-         introversion_score = EXCLUDED.introversion_score,
+         name = COALESCE(EXCLUDED.name, users.name),
+         age = COALESCE(EXCLUDED.age, users.age),
+         bio = COALESCE(EXCLUDED.bio, users.bio),
+         gender = COALESCE(EXCLUDED.gender, users.gender),
+         sexual_orientation = COALESCE(EXCLUDED.sexual_orientation, users.sexual_orientation),
+         interests = COALESCE(EXCLUDED.interests, users.interests),
+         introversion_score = COALESCE(EXCLUDED.introversion_score, users.introversion_score),
          updated_at = NOW()
        RETURNING id, cognito_sub, email, name, age, bio, gender, sexual_orientation, interests, introversion_score, created_at, updated_at`,
       [
