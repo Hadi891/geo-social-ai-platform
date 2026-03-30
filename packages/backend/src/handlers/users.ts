@@ -26,15 +26,9 @@ export async function handleSavePhoto(event: APIGatewayProxyEvent) {
     await db.query(
       `INSERT INTO photos (id, user_id, image_url, is_profile_photo, position)
        VALUES ($1, $2, $3, TRUE, 0)
-       ON CONFLICT ON CONSTRAINT one_profile_photo_per_user
-       DO NOTHING`,
+       ON CONFLICT (user_id) WHERE is_profile_photo = TRUE
+       DO UPDATE SET image_url = EXCLUDED.image_url`,
       [uuidv4(), userId, body.image_url]
-    );
-
-    // Update via UPDATE in case ON CONFLICT DO NOTHING skipped the insert
-    await db.query(
-      `UPDATE photos SET image_url = $1 WHERE user_id = $2 AND is_profile_photo = TRUE`,
-      [body.image_url, userId]
     );
 
     return ok({ image_url: body.image_url });

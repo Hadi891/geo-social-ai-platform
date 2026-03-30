@@ -125,6 +125,18 @@ export async function saveProfilePhoto(token: string, image_url: string): Promis
   if (!res.ok) throw new Error(body.message ?? `POST /photos failed (${res.status})`);
 }
 
+// ── POST /assistant ───────────────────────────────────────────────────────────
+
+export async function sendAssistantMessage(token: string, message: string): Promise<string> {
+  const res = await apiFetch(token, "/assistant", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /assistant failed (${res.status})`);
+  return body.reply as string;
+}
+
 // ── GET /nearby ───────────────────────────────────────────────────────────────
 
 export async function getNearby(token: string) {

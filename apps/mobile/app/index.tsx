@@ -1,8 +1,29 @@
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Link, router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { cognitoStorage } from '@/lib/cognito';
 
 export default function WelcomeScreen() {
+  const { getToken } = useAuth();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    cognitoStorage.sync()
+      .then(() => getToken())
+      .then(() => router.replace('/home'))
+      .catch(() => setChecking(false));
+  }, []);
+
+  if (checking) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#7C57C8" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
 

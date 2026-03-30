@@ -11,6 +11,8 @@ import AssistantHeader from '@/components/assistant/AssistantHeader';
 import ChatMessage from '@/components/assistant/ChatMessage';
 import SuggestionChip from '@/components/assistant/SuggestionChip';
 import AssistantInputBar from '@/components/assistant/AssistantInputBar';
+import { useAuth } from '@/context/AuthContext';
+import { sendAssistantMessage } from '@repo/api';
 
 export type MessageType = {
   id: string;
@@ -18,8 +20,6 @@ export type MessageType = {
   text: string;
   time: string;
 };
-
-const FIXED_ASSISTANT_REPLY = 'Totally natural! The best conversations start with curiosity.';
 
 const SUGGESTIONS = [
   'Give me an icebreaker',
@@ -46,33 +46,16 @@ const INITIAL_MESSAGES: MessageType[] = [
 ];
 
 export default function AssistantScreen() {
+  const { getToken } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<MessageType[]>(INITIAL_MESSAGES);
+  const [loading, setLoading] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  useEffect(() => {
-    return () => {
-      timeoutsRef.current.forEach(clearTimeout);
-    };
-  }, []);
-
-  const appendAssistantReply = () => {
-    const assistantMessage: MessageType = {
-      id: createId(),
-      sender: 'assistant',
-      text: FIXED_ASSISTANT_REPLY,
-      time: getCurrentTime(),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-  };
-
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = async (text: string) => {
     const trimmedText = text.trim();
-
-    if (!trimmedText) return;
+    if (!trimmedText || loading) return;
 
     const userMessage: MessageType = {
       id: createId(),
@@ -83,12 +66,34 @@ export default function AssistantScreen() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setLoading(true);
 
-    const timeout = setTimeout(() => {
-      appendAssistantReply();
-    }, 600);
+    try {
+      const token = await getToken();
+      const reply = await sendAssistantMessage(token, trimmedText);
 
-    timeoutsRef.current.push(timeout);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: createId(),
+          sender: 'assistant',
+          text: reply,
+          time: getCurrentTime(),
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: createId(),
+          sender: 'assistant',
+          text: 'Sorry, something went wrong. Please try again.',
+          time: getCurrentTime(),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
