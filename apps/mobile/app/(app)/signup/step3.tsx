@@ -19,21 +19,51 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Karen', 'Prefer not to say'];
 const INTERESTS_BY_CATEGORY = require('@/assets/interests.json') as Record<string, string[]>;
 const LOOKING_FOR_OPTIONS = ['Looking 1', 'Looking 2', 'Looking 3'];
 
+const CATEGORY_EMOJI_MAP: Record<string, any> = {
+  'lifestyle.png': require('@/assets/emojis/lifestyle.png'),
+  'entertainment.png': require('@/assets/emojis/entertainment.png'),
+  'fitness.png': require('@/assets/emojis/fitness.png'),
+  'outdoor.png': require('@/assets/emojis/outdoor.png'),
+  'creative.png': require('@/assets/emojis/creative.png'),
+  'intellectual.png': require('@/assets/emojis/intellectual.png'),
+  'social.png': require('@/assets/emojis/social.png'),
+};
+
 const MIN_INTERESTS_REQUIRED = 3;
 const MAX_TOTAL_INTERESTS = 10;
 const MAX_INTERESTS_PER_CATEGORY = 3;
 
 const MINIMUM_AGE = 18;
 
-const INTEREST_CATEGORY_BY_OPTION = Object.entries(INTERESTS_BY_CATEGORY).reduce(
-  (acc, [category, options]) => {
-    options.forEach((option) => {
-      acc[option] = category;
-    });
-    return acc;
-  },
-  {} as Record<string, string>
+const formatCategoryName = (value: string) =>
+  value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const parseCategory = (categoryKey: string) => {
+  const [rawName = '', rawImage = ''] = categoryKey.split(',').map((item) => item.trim());
+
+  return {
+    rawKey: categoryKey,
+    name: formatCategoryName(rawName),
+    imageName: rawImage,
+    imageSource: CATEGORY_EMOJI_MAP[rawImage],
+  };
+};
+
+const INTEREST_CATEGORIES = Object.entries(INTERESTS_BY_CATEGORY).map(
+  ([categoryKey, options]) => ({
+    ...parseCategory(categoryKey),
+    options,
+  })
 );
+
+const INTEREST_CATEGORY_BY_OPTION = INTEREST_CATEGORIES.reduce((acc, category) => {
+  category.options.forEach((option) => {
+    acc[option] = category.rawKey;
+  });
+  return acc;
+}, {} as Record<string, string>);
 
 function formatDate(date: Date) {
   const day = String(date.getDate()).padStart(2, '0');
@@ -141,14 +171,16 @@ export default function SignupStep3Screen() {
       return;
     }
 
-    const category = INTEREST_CATEGORY_BY_OPTION[value];
+    const categoryKey = INTEREST_CATEGORY_BY_OPTION[value];
     const selectedInSameCategory = interests.filter(
-      (item) => INTEREST_CATEGORY_BY_OPTION[item] === category
+      (item) => INTEREST_CATEGORY_BY_OPTION[item] === categoryKey
     ).length;
 
     if (selectedInSameCategory >= MAX_INTERESTS_PER_CATEGORY) {
+      const { name } = parseCategory(categoryKey);
+
       setInterestSheetError(
-        `You can select up to ${MAX_INTERESTS_PER_CATEGORY} interests from ${category}`
+        `You can select up to ${MAX_INTERESTS_PER_CATEGORY} interests from ${name}`
       );
       return;
     }
@@ -463,10 +495,6 @@ function InterestBottomSheet({
       onClose: () => void;
       onToggle: (value: string) => void;
     }) {
-        const formatCategoryTitle = (value: string) =>
-          value
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
 
         return (
           <Modal
@@ -495,14 +523,24 @@ function InterestBottomSheet({
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={styles.sheetScrollContent}
                 >
-                  {Object.entries(INTERESTS_BY_CATEGORY).map(([category, options]) => (
-                    <View key={category} style={styles.categorySection}>
-                      <Text style={styles.categoryTitle}>
-                        {formatCategoryTitle(category)}
-                      </Text>
+                  {INTEREST_CATEGORIES.map((category) => (
+                    <View key={category.rawKey} style={styles.categorySection}>
+                      <View style={styles.categoryHeader}>
+                        {category.imageSource && (
+                          <Image
+                            source={category.imageSource}
+                            style={styles.categoryEmoji}
+                            contentFit="contain"
+                          />
+                        )}
+
+                        <Text style={styles.categoryTitle}>
+                          {category.name}
+                        </Text>
+                      </View>
 
                       <View style={styles.chipsContainer}>
-                        {options.map((option) => {
+                        {category.options.map((option) => {
                           const selected = selectedInterests.includes(option);
 
                           return (
@@ -773,7 +811,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#242424',
-    marginBottom: 10,
   },
 
   chipsContainer: {
@@ -826,4 +863,17 @@ const styles = StyleSheet.create({
     color: '#D94B4B',
     marginBottom: 10,
   },
+
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+
+  categoryEmoji: {
+    width: 16,
+    height: 16,
+    marginRight: 6,
+  },
+
 });

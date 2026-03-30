@@ -1,29 +1,29 @@
 {
-  "lifestyle": [
-    "Travel",
-    "Food",
-    "Cooking",
-    "Coffee",
-    "Nightlife",
-    "Parties",
-    "Chill",
-    "Shopping",
-    "Fashion",
-    "Self-care"
-  ],
-  "entertainment": [
-    "Movies",
-    "TV Shows",
-    "Music",
-    "Concerts",
-    "Gaming",
-    "Anime",
-    "Podcasts",
-    "Stand-up Comedy",
-    "Theater",
-    "Streaming"
-  ],
-  "sports_fitness": [
+    "lifestyle, lifestyle.png": [
+      "Travel",
+      "Food",
+      "Cooking",
+      "Coffee",
+      "Nightlife",
+      "Parties",
+      "Chill",
+      "Shopping",
+      "Fashion",
+      "Self-care"
+    ],
+    "entertainment, entertainment.png": [
+      "Movies",
+      "TV Shows",
+      "Music",
+      "Concerts",
+      "Gaming",
+      "Anime",
+      "Podcasts",
+      "Stand-up Comedy",
+      "Theater",
+      "Streaming"
+    ],
+  "sports_fitness, fitness.png": [
     "Gym",
     "Fitness",
     "Running",
@@ -35,7 +35,7 @@
     "Yoga",
     "Martial Arts"
   ],
-  "outdoor": [
+  "outdoor, outdoor.png": [
     "Hiking",
     "Nature",
     "Beach",
@@ -45,7 +45,7 @@
     "Adventure",
     "Exploring Cities"
   ],
-  "creative": [
+  "creative, creative.png": [
     "Photography",
     "Videography",
     "Drawing",
@@ -56,7 +56,7 @@
     "Music Production",
     "Dancing"
   ],
-  "intellectual": [
+  "intellectual, intellectual.png": [
     "AI",
     "Technology",
     "Science",
@@ -67,7 +67,7 @@
     "Startups",
     "Finance"
   ],
-  "social_personality": [
+  "social_personality, social.png": [
     "Deep Conversations",
     "Humor",
     "Sarcasm",
