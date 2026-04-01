@@ -7,12 +7,15 @@ import {
   View,
 } from 'react-native';
 import TopBar from '@/components/TopBar';
+import { useTheme } from '@/context/ThemeContext';
 import AssistantHeader from '@/components/assistant/AssistantHeader';
 import ChatMessage from '@/components/assistant/ChatMessage';
 import SuggestionChip from '@/components/assistant/SuggestionChip';
 import AssistantInputBar from '@/components/assistant/AssistantInputBar';
 import { useAuth } from '@/context/AuthContext';
 import { sendAssistantMessage } from '@repo/api';
+import { router } from 'expo-router';
+
 
 export type MessageType = {
   id: string;
@@ -46,16 +49,48 @@ const INITIAL_MESSAGES: MessageType[] = [
 ];
 
 export default function AssistantScreen() {
+    const { colors } = useTheme();
   const { getToken } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<MessageType[]>(INITIAL_MESSAGES);
   const [loading, setLoading] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
+    const styles = StyleSheet.create({
+          keyboardContainer: {
+            flex: 1,
+          },
+          container: {
+            flex: 1,
+            backgroundColor: colors.background,
+          },
+          content: {
+            flex: 1,
+            paddingHorizontal: 18,
+            paddingTop: 12,
+            paddingBottom: 8,
+          },
+          messagesContainer: {
+            flex: 1,
+            marginTop: 18,
+          },
+          messagesContent: {
+            paddingBottom: 8,
+          },
+          suggestionsContainer: {
+            marginTop: 8,
+            marginBottom: 12,
+            flexGrow: 0,
+          },
+          suggestionsContent: {
+            paddingRight: 8,
+          },
+        });
 
   const handleSendMessage = async (text: string) => {
     const trimmedText = text.trim();
     if (!trimmedText || loading) return;
+
 
     const userMessage: MessageType = {
       id: createId(),
@@ -63,6 +98,7 @@ export default function AssistantScreen() {
       text: trimmedText,
       time: getCurrentTime(),
     };
+
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
@@ -102,7 +138,8 @@ export default function AssistantScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <TopBar title="Mingle Assistant" />
+        <TopBar title="Mingle Assistant" onLeftPress={() => router.push('/settings')} />
+
 
         <View style={styles.content}>
           <AssistantHeader
@@ -151,34 +188,3 @@ export default function AssistantScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  keyboardContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#FCF9FC',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  messagesContainer: {
-    flex: 1,
-    marginTop: 18,
-  },
-  messagesContent: {
-    paddingBottom: 8,
-  },
-  suggestionsContainer: {
-    marginTop: 8,
-    marginBottom: 12,
-    flexGrow: 0,
-  },
-  suggestionsContent: {
-    paddingRight: 8,
-  },
-});

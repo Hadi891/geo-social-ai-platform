@@ -2,26 +2,35 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BottomNavBar from '@/components/BottomNavBar';
 import TopBar from '@/components/TopBar';
+import { router } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
+
 
 export default function MapScreen() {
+  const { colors } = useTheme();
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      padding: 20,
+      paddingBottom: 110,
+    },
+  });
+
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Map" />
+      <TopBar
+        title="Mingle Map"
+        onLeftPress={() => router.push('/settings')}
+      />
+
       <View style={styles.content}>
-        <Text>Map Page</Text>
+        <Text style={{ color: colors.text }}>Map Page</Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCF9FC',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    paddingBottom: 110,
-  },
-});

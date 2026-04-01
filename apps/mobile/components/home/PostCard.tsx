@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
 
 type PostCardProps = {
   profileImageSource: ImageSourcePropType;
@@ -28,6 +29,90 @@ export default function PostCard({
   caption,
   tags,
 }: PostCardProps) {
+  const { colors } = useTheme();
+
+  const styles = StyleSheet.create({
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      paddingTop: 12,
+      paddingHorizontal: 12,
+      paddingBottom: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    profileImage: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      marginRight: 10,
+    },
+    nameText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    distance: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    postImage: {
+      width: '100%',
+      height: 240,
+      borderRadius: 14,
+      marginBottom: 10,
+      resizeMode: 'cover',
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    leftActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconButton: {
+      marginRight: 12,
+    },
+    caption: {
+      marginTop: 10,
+      fontSize: 13,
+      lineHeight: 19,
+      color: colors.text,
+    },
+    tagsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 10,
+    },
+    tagChip: {
+      backgroundColor: colors.pinkBg,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    tagText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.pink,
+    },
+  });
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -49,11 +134,11 @@ export default function PostCard({
       <View style={styles.actionsRow}>
         <View style={styles.leftActions}>
           <Pressable style={styles.iconButton}>
-            <Ionicons name="heart-outline" size={22} color="#3E3342" />
+            <Ionicons name="heart-outline" size={22} color={colors.text} />
           </Pressable>
 
           <Pressable style={styles.iconButton}>
-            <Feather name="message-circle" size={20} color="#3E3342" />
+            <Feather name="message-circle" size={20} color={colors.text} />
           </Pressable>
         </View>
       </View>
@@ -73,85 +158,3 @@ export default function PostCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#EFE7EC',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    marginRight: 10,
-  },
-  nameText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2F2632',
-  },
-  distance: {
-    fontSize: 11,
-    color: '#867A88',
-    marginTop: 2,
-  },
-  postImage: {
-    width: '100%',
-    height: 240,
-    borderRadius: 14,
-    marginBottom: 10,
-    resizeMode: 'cover',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconButton: {
-    marginRight: 12,
-  },
-  caption: {
-    marginTop: 10,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#433847',
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  tagChip: {
-    backgroundColor: '#F8E5F1',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#C44A93',
-  },
-});

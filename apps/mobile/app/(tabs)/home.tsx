@@ -17,7 +17,8 @@ import MyStoryAvatar from '@/components/home/MyStoryAvatar';
 import PostCard from '@/components/home/PostCard';
 import StoryViewerModal from '@/components/home/StoryViewerModal';
 import AddPostModal from '@/components/home/AddPostModal';
-
+import { router } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
 const LOGO_IMAGE = require('@/assets/images/logo.png');
 
 const stories = [
@@ -81,12 +82,72 @@ const initialPosts = [
 ];
 
 export default function HomeScreen() {
+    const { colors } = useTheme();
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
   const [selectedStoryImages, setSelectedStoryImages] = useState<ImageSourcePropType[]>([]);
   const [myStoryImages, setMyStoryImages] = useState<ImageSourcePropType[]>([
     LOGO_IMAGE,
     LOGO_IMAGE,
   ]);
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 14,
+  },
+  storiesContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  storiesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  storiesRow: {
+    paddingTop: 12,
+  },
+  addPostButton: {
+    width: '100%',
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.pinkBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: colors.pinkLight,
+  },
+  addPostButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.pink,
+  },
+  postsContent: {
+    paddingBottom: 18,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  seeAll: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.pink,
+  },
+});
 
   const [allPosts, setAllPosts] = useState(initialPosts);
   const [addPostVisible, setAddPostVisible] = useState(false);
@@ -146,7 +207,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Home" />
+      <TopBar title="Mingle Home" onLeftPress={() => router.push('/settings')} />
 
       <View style={styles.content}>
         <FlatList
@@ -224,62 +285,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCF9FC',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 14,
-  },
-  storiesContainer: {
-    backgroundColor: '#FEFEFE',
-    borderRadius: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
-    paddingHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EFE7EC',
-  },
-  storiesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  storiesRow: {
-    paddingTop: 12,
-  },
-  addPostButton: {
-    width: '100%',
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#F8E5F1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EFD4E4',
-  },
-  addPostButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#C44A93',
-  },
-  postsContent: {
-    paddingBottom: 18,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2F2632',
-  },
-  seeAll: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C44A93',
-  },
-});
