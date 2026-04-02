@@ -4,6 +4,7 @@ import {
   Alert,
   ImageSourcePropType,
   LayoutChangeEvent,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -77,6 +78,7 @@ export default function ProfileScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -191,6 +193,12 @@ export default function ProfileScreen() {
   }, [getToken]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     if (!showEditSection || !shouldScrollToEdit || editSectionY <= 0) return;
@@ -362,6 +370,9 @@ export default function ProfileScreen() {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#7C57C8" />
+        }
       >
         <ProfileHeaderCard
           imageSource={getImageSource(profile.profileImage)}
