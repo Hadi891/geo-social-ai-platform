@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 
 import TopBar from '@/components/TopBar';
 import StoryAvatar from '@/components/home/StoryAvatar';
@@ -310,7 +311,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <TopBar title="Mingle Home" />
+        <TopBar title="Mingle Home" onLeftPress={() => router.push('/settings')} />
         <ActivityIndicator size="large" color={colors.pink} />
       </View>
     );
@@ -318,7 +319,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Home" />
+      <TopBar title="Mingle Home" onLeftPress={() => router.push('/settings')} />
 
       <View style={styles.content}>
         <FlatList

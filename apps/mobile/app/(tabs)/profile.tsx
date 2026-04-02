@@ -313,7 +313,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Profile" />
+      <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
