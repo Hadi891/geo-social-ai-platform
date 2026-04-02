@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNotifications } from '@/components/notification/NotificationContext';
+
+type FeatherIconName = ComponentProps<typeof Feather>['name'];
 import { useTheme } from '@/context/ThemeContext';
 
 type TopBarProps = {
@@ -16,10 +19,10 @@ type TopBarProps = {
 export default function TopBar({
   title = 'Mingle',
   leftIcon = 'settings',
-  rightIcon = 'heart-outline',
   onLeftPress,
-  onRightPress,
 }: TopBarProps) {
+  const { isOpen, toggle } = useNotifications();
+
   const { colors } = useTheme();
 
   return (
@@ -28,9 +31,15 @@ export default function TopBar({
         <Pressable style={styles.iconButton} onPress={onLeftPress}>
           <Feather name={leftIcon} size={22} color={colors.pink} />
         </Pressable>
+
         <Text style={[styles.title, { color: colors.pink }]}>{title}</Text>
-        <Pressable style={styles.iconButton} onPress={onRightPress}>
-          {rightIcon ? <Ionicons name={rightIcon} size={22} color={colors.pink} /> : <View style={{ width: 22 }} />}
+
+        <Pressable style={styles.iconButton} onPress={toggle}>
+          <Ionicons
+            name={isOpen ? 'heart' : 'heart-outline'}
+            size={22}
+            color="#C05AA8"
+          />
         </Pressable>
       </View>
     </SafeAreaView>
