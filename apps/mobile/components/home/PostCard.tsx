@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Dimensions,
   Image,
   Pressable,
   StyleSheet,
@@ -8,6 +9,11 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_H_PADDING = 12 * 2;
+const SCREEN_H_PADDING = 14 * 2;
+const IMAGE_WIDTH = SCREEN_WIDTH - SCREEN_H_PADDING - CARD_H_PADDING;
 
 type PostCardProps = {
   profileImageUri?: string | null;
@@ -41,6 +47,17 @@ export default function PostCard({
   onComment,
 }: PostCardProps) {
   const { colors } = useTheme();
+  const [imageHeight, setImageHeight] = useState<number | null>(null);
+  const hasImage = !!postImageUri;
+
+  useEffect(() => {
+    if (!postImageUri) return;
+    Image.getSize(
+      postImageUri,
+      (w, h) => setImageHeight(Math.round((h / w) * IMAGE_WIDTH)),
+      () => setImageHeight(240),
+    );
+  }, [postImageUri]);
 
   const distanceLabel =
     distance != null
@@ -83,14 +100,13 @@ export default function PostCard({
       fontWeight: '700',
       color: colors.text,
     },
-    distance: {
+    distanceText: {
       fontSize: 11,
       color: colors.subText,
       marginTop: 2,
     },
     postImage: {
       width: '100%',
-      height: 240,
       borderRadius: 14,
       marginBottom: 10,
       resizeMode: 'cover',
@@ -99,6 +115,7 @@ export default function PostCard({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginTop: hasImage ? 0 : 10,
     },
     leftActions: {
       flexDirection: 'row',
@@ -121,6 +138,12 @@ export default function PostCard({
       lineHeight: 19,
       color: colors.text,
     },
+    textOnlyCaption: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.text,
+      marginBottom: 2,
+    },
     tagsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -141,8 +164,35 @@ export default function PostCard({
     },
   });
 
+  const actionsBar = (
+    <View style={styles.actionsRow}>
+      <View style={styles.leftActions}>
+        <Pressable style={styles.iconButton} onPress={onLike}>
+          <Ionicons
+            name={likedByMe ? 'heart' : 'heart-outline'}
+            size={22}
+            color={likedByMe ? colors.pink : colors.text}
+          />
+          {likeCount > 0 && (
+            <Text style={[styles.countText, likedByMe && { color: colors.pink }]}>
+              {likeCount}
+            </Text>
+          )}
+        </Pressable>
+
+        <Pressable style={styles.iconButton} onPress={onComment}>
+          <Feather name="message-circle" size={20} color={colors.text} />
+          {commentCount > 0 && (
+            <Text style={styles.countText}>{commentCount}</Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.card}>
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image
@@ -151,48 +201,42 @@ export default function PostCard({
           />
           <View>
             <Text style={styles.nameText}>
-              {name}
-              {age ? `, ${age}` : ''}
+              {name}{age ? `, ${age}` : ''}
             </Text>
-            {distanceLabel && <Text style={styles.distance}>{distanceLabel}</Text>}
+            {distanceLabel && <Text style={styles.distanceText}>{distanceLabel}</Text>}
           </View>
         </View>
       </View>
 
-      {postImageUri ? (
-        <Image source={{ uri: postImageUri }} style={styles.postImage} />
-      ) : null}
+      {hasImage ? (
+        <>
+          <Image
+            source={{ uri: postImageUri! }}
+            style={[styles.postImage, { height: imageHeight ?? 240 }]}
+          />
+          {actionsBar}
+          <Text style={styles.caption}>
+            <Text style={styles.nameText}>{name} </Text>
+            {caption}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.textOnlyCaption}>{caption}</Text>
+          {tags && tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {tags.map((tag) => (
+                <View key={tag} style={styles.tagChip}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {actionsBar}
+        </>
+      )}
 
-      <View style={styles.actionsRow}>
-        <View style={styles.leftActions}>
-          <Pressable style={styles.iconButton} onPress={onLike}>
-            <Ionicons
-              name={likedByMe ? 'heart' : 'heart-outline'}
-              size={22}
-              color={likedByMe ? colors.pink : colors.text}
-            />
-            {likeCount > 0 && (
-              <Text style={[styles.countText, likedByMe && { color: colors.pink }]}>
-                {likeCount}
-              </Text>
-            )}
-          </Pressable>
-
-          <Pressable style={styles.iconButton} onPress={onComment}>
-            <Feather name="message-circle" size={20} color={colors.text} />
-            {commentCount > 0 && (
-              <Text style={styles.countText}>{commentCount}</Text>
-            )}
-          </Pressable>
-        </View>
-      </View>
-
-      <Text style={styles.caption}>
-        <Text style={styles.nameText}>{name} </Text>
-        {caption}
-      </Text>
-
-      {tags && tags.length > 0 && (
+      {hasImage && tags && tags.length > 0 && (
         <View style={styles.tagsRow}>
           {tags.map((tag) => (
             <View key={tag} style={styles.tagChip}>
