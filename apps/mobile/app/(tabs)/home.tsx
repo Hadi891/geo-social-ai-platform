@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
-  ImageSourcePropType,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,134 +16,250 @@ import TopBar from '@/components/TopBar';
 import StoryAvatar from '@/components/home/StoryAvatar';
 import MyStoryAvatar from '@/components/home/MyStoryAvatar';
 import PostCard from '@/components/home/PostCard';
-import StoryViewerModal from '@/components/home/StoryViewerModal';
+import StoryViewerModal, { type StoryGroup, type StoryItem } from '@/components/home/StoryViewerModal';
 import AddPostModal from '@/components/home/AddPostModal';
+import CommentsModal from '@/components/home/CommentsModal';
+
+import { useAuth } from '@/context/AuthContext';
+import {
+  getPosts,
+  likePost,
+  unlikePost,
+  getMyProfile,
+  getStoriesFeed,
+  getMyStories,
+  createStory,
+  markStoryViewed,
+  getUploadUrl,
+  uploadToS3,
+  type Post,
+  type Story,
+} from '@repo/api';
 
 const LOGO_IMAGE = require('@/assets/images/logo.png');
-
-const stories = [
-  {
-    id: '1',
-    name: 'Sarah',
-    imageSource: LOGO_IMAGE,
-    storyImages: [LOGO_IMAGE, LOGO_IMAGE],
-  },
-  {
-    id: '2',
-    name: 'Marcus',
-    imageSource: LOGO_IMAGE,
-    storyImages: [LOGO_IMAGE],
-  },
-  {
-    id: '3',
-    name: 'Chloe',
-    imageSource: LOGO_IMAGE,
-    storyImages: [LOGO_IMAGE, LOGO_IMAGE, LOGO_IMAGE],
-  },
-  {
-    id: '4',
-    name: 'David',
-    imageSource: LOGO_IMAGE,
-    storyImages: [LOGO_IMAGE],
-  },
-];
-
-const initialPosts = [
-  {
-    id: '1',
-    name: 'Amelia',
-    age: 24,
-    distance: 2,
-    profileImageSource: LOGO_IMAGE,
-    postImageSource: LOGO_IMAGE,
-    caption: 'Looking for someone who can keep up with my energy...',
-    tags: ['Architecture', 'Solo'],
-  },
-  {
-    id: '2',
-    name: 'Elena',
-    age: 26,
-    distance: 5,
-    profileImageSource: LOGO_IMAGE,
-    postImageSource: LOGO_IMAGE,
-    caption: 'Always looking for a new canvas or a good coffee spot.',
-    tags: ['Art', 'Coffee'],
-  },
-  {
-    id: '3',
-    name: 'Karen',
-    age: 22,
-    distance: 20,
-    profileImageSource: LOGO_IMAGE,
-    postImageSource: LOGO_IMAGE,
-    caption: 'Always looking for problems.',
-    tags: ['Problems', 'IGR'],
-  },
-];
+const PAGE_SIZE = 20;
 
 export default function HomeScreen() {
-  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
-  const [selectedStoryImages, setSelectedStoryImages] = useState<ImageSourcePropType[]>([]);
-  const [myStoryImages, setMyStoryImages] = useState<ImageSourcePropType[]>([
-    LOGO_IMAGE,
-    LOGO_IMAGE,
-  ]);
+  const { getToken } = useAuth();
 
-  const [allPosts, setAllPosts] = useState(initialPosts);
+  // ── Posts ──────────────────────────────────────────────────────────────────
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [addPostVisible, setAddPostVisible] = useState(false);
+  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const [myProfilePhotoUri, setMyProfilePhotoUri] = useState<string | null>(null);
 
-  const openStoryViewer = (images: ImageSourcePropType[]) => {
-    setSelectedStoryImages(images);
+  // ── Stories ────────────────────────────────────────────────────────────────
+  const [feedStories, setFeedStories] = useState<Story[]>([]);
+  const [myStoryItems, setMyStoryItems] = useState<StoryItem[]>([]);
+  // Track which story IDs have been viewed in this session (to show grey ring)
+  const viewedIdsRef = useRef<Set<string>>(new Set());
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
+  const [startGroupIndex, setStartGroupIndex] = useState(0);
+
+  // ── Fetch posts ────────────────────────────────────────────────────────────
+  const fetchPosts = useCallback(async (offset = 0, append = false) => {
+    try {
+      const token = await getToken();
+      const res = await getPosts(token, { limit: PAGE_SIZE, offset });
+      if (append) {
+        setPosts((prev) => [...prev, ...res.posts]);
+      } else {
+        setPosts(res.posts);
+      }
+      setHasMore(res.posts.length >= PAGE_SIZE);
+    } catch (err) {
+      console.error('Failed to fetch posts', err);
+    }
+  }, [getToken]);
+
+  // ── Fetch stories ──────────────────────────────────────────────────────────
+  const fetchStories = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const [feed, mine] = await Promise.all([
+        getStoriesFeed(token),
+        getMyStories(token),
+      ]);
+      setFeedStories(feed.stories);
+      setMyStoryItems(mine.stories.map((s) => ({ id: s.id, uri: s.media_url ?? '' })));
+    } catch (err) {
+      console.error('Failed to fetch stories', err);
+    }
+  }, [getToken]);
+
+  // ── Initial load ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const token = await getToken();
+        const [, profile] = await Promise.all([
+          fetchPosts(),
+          getMyProfile(token),
+        ]);
+        setMyProfilePhotoUri(profile.profile_photo_url ?? null);
+        await fetchStories();
+      } catch (err) {
+        console.error('Init error', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchPosts(0, false), fetchStories()]);
+    setRefreshing(false);
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    await fetchPosts(posts.length, true);
+    setLoadingMore(false);
+  };
+
+  // ── Likes ──────────────────────────────────────────────────────────────────
+  const handleLike = async (post: Post) => {
+    const wasLiked = post.liked_by_me;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id
+          ? { ...p, liked_by_me: !wasLiked, like_count: wasLiked ? p.like_count - 1 : p.like_count + 1 }
+          : p
+      )
+    );
+    try {
+      const token = await getToken();
+      if (wasLiked) await unlikePost(token, post.id);
+      else await likePost(token, post.id);
+    } catch (err) {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, liked_by_me: wasLiked, like_count: wasLiked ? p.like_count + 1 : p.like_count - 1 }
+            : p
+        )
+      );
+      console.error('Like failed', err);
+    }
+  };
+
+  // ── Comments ───────────────────────────────────────────────────────────────
+  const handleOpenComments = (postId: string) => {
+    setCommentsPostId(postId);
+    setCommentsVisible(true);
+  };
+
+  const handleCommentAdded = () => {
+    if (commentsPostId) {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === commentsPostId ? { ...p, comment_count: p.comment_count + 1 } : p
+        )
+      );
+    }
+  };
+
+  // ── Story groups ───────────────────────────────────────────────────────────
+  // Group feed stories by author
+  const feedGroups = useMemo<StoryGroup[]>(() => {
+    const grouped = new Map<string, StoryGroup>();
+    for (const story of feedStories) {
+      if (!story.author) continue;
+      const authorId = story.author.id;
+      if (!grouped.has(authorId)) {
+        grouped.set(authorId, {
+          id: authorId,
+          name: story.author.name,
+          avatar: story.author.profile_photo_url ? { uri: story.author.profile_photo_url } : LOGO_IMAGE,
+          items: [],
+        });
+      }
+      grouped.get(authorId)!.items.push({ id: story.id, uri: story.media_url ?? '' });
+    }
+    return Array.from(grouped.values());
+  }, [feedStories]);
+
+  const myStoryGroup = useMemo<StoryGroup>(() => ({
+    id: 'me',
+    name: 'Your story',
+    avatar: myProfilePhotoUri ? { uri: myProfilePhotoUri } : LOGO_IMAGE,
+    items: myStoryItems,
+  }), [myProfilePhotoUri, myStoryItems]);
+
+  // All groups for the viewer: my story first (only if I have stories), then feed
+  const allStoryGroups = useMemo<StoryGroup[]>(() => {
+    const groups: StoryGroup[] = [];
+    if (myStoryItems.length > 0) groups.push(myStoryGroup);
+    groups.push(...feedGroups);
+    return groups;
+  }, [myStoryGroup, feedGroups, myStoryItems]);
+
+  const openStoryViewer = (groupId: string) => {
+    const idx = allStoryGroups.findIndex((g) => g.id === groupId);
+    setStartGroupIndex(idx >= 0 ? idx : 0);
     setStoryViewerVisible(true);
   };
 
-  const closeStoryViewer = () => {
-    setStoryViewerVisible(false);
-    setSelectedStoryImages([]);
+  const handleStoryViewed = async (storyId: string) => {
+    if (viewedIdsRef.current.has(storyId)) return;
+    viewedIdsRef.current.add(storyId);
+    try {
+      const token = await getToken();
+      await markStoryViewed(token, storyId);
+    } catch {
+      // non-critical
+    }
   };
 
+  // ── Add story ──────────────────────────────────────────────────────────────
   const handleAddStory = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
     if (!permission.granted) {
       Alert.alert('Permission needed', 'Please allow access to your photos.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       quality: 1,
     });
-
     if (result.canceled) return;
 
-    const pickedImage: ImageSourcePropType = {
-      uri: result.assets[0].uri,
-    };
+    const asset = result.assets[0];
+    const contentType = 'image/jpeg';
 
-    setMyStoryImages((prev) => [...prev, pickedImage]);
+    try {
+      const token = await getToken();
+      const { upload_url, key } = await getUploadUrl(token, 'stories', contentType);
+      await uploadToS3(upload_url, asset.uri, contentType);
+      await createStory(token, { media_url: key, media_type: 'image' });
+      // Optimistically add to local story items
+      setMyStoryItems((prev) => [...prev, { id: null, uri: asset.uri }]);
+    } catch (err) {
+      Alert.alert('Failed to upload story', String(err));
+    }
   };
 
-  const handleAddPost = (newPost: {
-    postImageSource: ImageSourcePropType;
-    caption: string;
-    tags: string[];
-  }) => {
-    setAllPosts((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        name: 'You',
-        age: 22,
-        distance: 0,
-        profileImageSource: LOGO_IMAGE,
-        postImageSource: newPost.postImageSource,
-        caption: newPost.caption,
-        tags: newPost.tags,
-      },
-    ]);
-  };
+  // ── Check if all stories from a group are viewed ───────────────────────────
+  const isGroupAllSeen = (group: StoryGroup) =>
+    group.items.every((item) => item.id === null || viewedIdsRef.current.has(item.id));
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <TopBar title="Mingle Home" />
+        <ActivityIndicator size="large" color="#D3327C" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -150,42 +267,42 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <FlatList
-          data={allPosts}
+          data={posts}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.postsContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#D3327C" />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
           ListHeaderComponent={
             <View>
-              <View style={styles.storiesContainer}>
-                <View style={styles.storiesHeader}>
-                  <Text style={styles.sectionTitle}>New Matches</Text>
-                  <Text style={styles.seeAll}>SEE ALL</Text>
-                </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.storiesRow}
+                style={styles.storiesScroll}
+              >
+                <MyStoryAvatar
+                  imageSource={myProfilePhotoUri ? { uri: myProfilePhotoUri } : LOGO_IMAGE}
+                  name="Your story"
+                  storyImages={[]}
+                  onOpenStories={myStoryItems.length > 0 ? () => openStoryViewer('me') : undefined}
+                  onAddStory={handleAddStory}
+                />
 
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.storiesRow}
-                >
-                  <MyStoryAvatar
-                    imageSource={myStoryImages[myStoryImages.length - 1]}
-                    name="Your story"
-                    storyImages={myStoryImages}
-                    onOpenStories={openStoryViewer}
-                    onAddStory={handleAddStory}
+                {feedGroups.map((group) => (
+                  <StoryAvatar
+                    key={group.id}
+                    imageSource={group.avatar ?? LOGO_IMAGE}
+                    name={group.name}
+                    storyImages={[]}
+                    seen={isGroupAllSeen(group)}
+                    onOpenStories={() => openStoryViewer(group.id)}
                   />
-
-                  {stories.map((story) => (
-                    <StoryAvatar
-                      key={story.id}
-                      imageSource={story.imageSource}
-                      name={story.name}
-                      storyImages={story.storyImages}
-                      onOpenStories={openStoryViewer}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
+                ))}
+              </ScrollView>
 
               <Pressable
                 style={styles.addPostButton}
@@ -197,29 +314,54 @@ export default function HomeScreen() {
           }
           renderItem={({ item }) => (
             <PostCard
-              profileImageSource={item.profileImageSource}
-              name={item.name}
-              age={item.age}
-              distance={item.distance}
-              postImageSource={item.postImageSource}
-              caption={item.caption}
+              profileImageUri={item.author.profile_photo_url}
+              name={item.author.name ?? 'User'}
+              age={item.author.age}
+              distance={item.distance_m}
+              postImageUri={item.media_url}
+              caption={item.content ?? ''}
               tags={item.tags}
+              likeCount={item.like_count}
+              commentCount={item.comment_count}
+              likedByMe={item.liked_by_me}
+              onLike={() => handleLike(item)}
+              onComment={() => handleOpenComments(item.id)}
             />
           )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No posts nearby yet.</Text>
+              <Text style={styles.emptySubtext}>Be the first to share something!</Text>
+            </View>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#D3327C" style={{ marginVertical: 16 }} />
+            ) : null
+          }
         />
       </View>
 
       <StoryViewerModal
         visible={storyViewerVisible}
-        images={selectedStoryImages}
-        onClose={closeStoryViewer}
+        groups={allStoryGroups}
+        startGroupIndex={startGroupIndex}
+        onClose={() => setStoryViewerVisible(false)}
+        onStoryViewed={handleStoryViewed}
       />
 
       <AddPostModal
         visible={addPostVisible}
         onClose={() => setAddPostVisible(false)}
-        onSubmit={handleAddPost}
-        profileImageSource={LOGO_IMAGE}
+        onPostCreated={() => fetchPosts(0, false)}
+        profileImageUri={myProfilePhotoUri}
+      />
+
+      <CommentsModal
+        visible={commentsVisible}
+        postId={commentsPostId}
+        onClose={() => setCommentsVisible(false)}
+        onCommentAdded={handleCommentAdded}
       />
     </View>
   );
@@ -234,24 +376,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 14,
   },
-  storiesContainer: {
-    backgroundColor: '#FEFEFE',
-    borderRadius: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
-    paddingHorizontal: 12,
+  storiesScroll: {
     marginTop: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EFE7EC',
-  },
-  storiesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 10,
   },
   storiesRow: {
-    paddingTop: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    alignItems: 'center',
   },
   addPostButton: {
     width: '100%',
@@ -272,14 +404,18 @@ const styles = StyleSheet.create({
   postsContent: {
     paddingBottom: 18,
   },
-  sectionTitle: {
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  emptyText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#2F2632',
   },
-  seeAll: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C44A93',
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9B8F9D',
+    marginTop: 6,
   },
 });

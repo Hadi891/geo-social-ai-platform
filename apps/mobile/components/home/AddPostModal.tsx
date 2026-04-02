@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  ImageSourcePropType,
   Modal,
   Pressable,
   ScrollView,
@@ -11,98 +11,103 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-
+import { useAuth } from '@/context/AuthContext';
+import { createPost, getUploadUrl, uploadToS3 } from '@repo/api';
 import PostCard from '@/components/home/PostCard';
 
 type AddPostModalProps = {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (post: {
-    postImageSource: ImageSourcePropType;
-    caption: string;
-    tags: string[];
-  }) => void;
-  profileImageSource: ImageSourcePropType;
+  onPostCreated: () => void;
+  profileImageUri?: string | null;
 };
-
-const DEFAULT_POST_IMAGE = require('@/assets/images/logo.png');
 
 export default function AddPostModal({
   visible,
   onClose,
-  onSubmit,
-  profileImageSource,
+  onPostCreated,
+  profileImageUri,
 }: AddPostModalProps) {
-  const [postImageSource, setPostImageSource] =
-    useState<ImageSourcePropType>(DEFAULT_POST_IMAGE);
+  const { getToken } = useAuth();
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [tagInputs, setTagInputs] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!visible) {
-      setPostImageSource(DEFAULT_POST_IMAGE);
+      setImageUri(null);
       setCaption('');
       setTagInputs([]);
     }
   }, [visible]);
 
-  const previewTags = useMemo(() => {
-    return tagInputs.map((tag) => tag.trim()).filter(Boolean);
-  }, [tagInputs]);
+  const cleanTags = tagInputs.map((t) => t.trim()).filter(Boolean);
 
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
     if (!permission.granted) {
       Alert.alert('Permission needed', 'Please allow access to your photos.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 1,
+      quality: 0.8,
     });
-
     if (result.canceled) return;
-
-    setPostImageSource({
-      uri: result.assets[0].uri,
-    });
+    setImageUri(result.assets[0].uri);
   };
 
-  const handleAddTagField = () => {
-    const hasEmptyTag = tagInputs.some((tag) => tag.trim() === '');
-
-    if (hasEmptyTag) return;
-
+  const handleAddTag = () => {
+    if (tagInputs.some((t) => t.trim() === '')) return;
     setTagInputs((prev) => [...prev, '']);
   };
 
   const handleChangeTag = (index: number, value: string) => {
     setTagInputs((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
+      const next = [...prev];
+      next[index] = value;
+      return next;
     });
   };
 
-  const handleSubmit = () => {
-    const cleanCaption = caption.trim();
-    const cleanTags = tagInputs.map((tag) => tag.trim()).filter(Boolean);
+  const handleRemoveTag = (index: number) => {
+    setTagInputs((prev) => prev.filter((_, i) => i !== index));
+  };
 
-    if (!cleanCaption) {
-      Alert.alert('Missing description', 'Please add a description.');
+  const handleSubmit = async () => {
+    const content = caption.trim();
+    if (!content && !imageUri) {
+      Alert.alert('Missing content', 'Please add a description or an image.');
       return;
     }
+    setSubmitting(true);
+    try {
+      const token = await getToken();
+      let media_url: string | undefined;
 
-    onSubmit({
-      postImageSource,
-      caption: cleanCaption,
-      tags: cleanTags,
-    });
+      if (imageUri) {
+        const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpeg';
+        const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        const { upload_url, key } = await getUploadUrl(token, 'posts', contentType);
+        await uploadToS3(upload_url, imageUri, contentType);
+        media_url = key;
+      }
 
-    onClose();
+      await createPost(token, {
+        content: content || undefined,
+        media_url,
+        tags: cleanTags.length > 0 ? cleanTags : undefined,
+      });
+
+      onClose();
+      onPostCreated();
+    } catch (err: any) {
+      Alert.alert('Post failed', err.message ?? 'Something went wrong.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -115,16 +120,17 @@ export default function AddPostModal({
             <Text style={styles.title}>Create Post</Text>
 
             <PostCard
-              profileImageSource={profileImageSource}
+              profileImageUri={profileImageUri}
               name="You"
-              distance={0}
-              postImageSource={postImageSource}
+              postImageUri={imageUri}
               caption={caption || 'Your post description will appear here...'}
-              tags={previewTags.length ? previewTags : ['Tag 1', 'Tag 2']}
+              tags={cleanTags.length > 0 ? cleanTags : undefined}
             />
 
             <Pressable style={styles.pickButton} onPress={handlePickImage}>
-              <Text style={styles.pickButtonText}>Choose image</Text>
+              <Text style={styles.pickButtonText}>
+                {imageUri ? 'Change image' : 'Choose image'}
+              </Text>
             </Pressable>
 
             <TextInput
@@ -137,31 +143,42 @@ export default function AddPostModal({
             />
 
             <Text style={styles.tagsLabel}>Tags</Text>
-
-            <View style={styles.tagsEditor}>
+            <View style={styles.tagsRow}>
               {tagInputs.map((tag, index) => (
-                <TextInput
-                  key={index}
-                  style={styles.tagInput}
-                  placeholder="Tag"
-                  placeholderTextColor="#9B8F9D"
-                  value={tag}
-                  onChangeText={(value) => handleChangeTag(index, value)}
-                />
+                <View key={index} style={styles.tagInputWrapper}>
+                  <TextInput
+                    style={styles.tagInput}
+                    placeholder="Tag"
+                    placeholderTextColor="#9B8F9D"
+                    value={tag}
+                    onChangeText={(v) => handleChangeTag(index, v)}
+                    autoCapitalize="none"
+                  />
+                  <Pressable style={styles.removeTag} onPress={() => handleRemoveTag(index)}>
+                    <Text style={styles.removeTagText}>×</Text>
+                  </Pressable>
+                </View>
               ))}
-
-              <Pressable style={styles.addTagButton} onPress={handleAddTagField}>
-                <Text style={styles.addTagButtonText}>+ Tag</Text>
+              <Pressable style={styles.addTagButton} onPress={handleAddTag}>
+                <Text style={styles.addTagText}>+ Tag</Text>
               </Pressable>
             </View>
 
             <View style={styles.actionsRow}>
-              <Pressable style={styles.cancelButton} onPress={onClose}>
+              <Pressable style={styles.cancelButton} onPress={onClose} disabled={submitting}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </Pressable>
 
-              <Pressable style={styles.addButton} onPress={handleSubmit}>
-                <Text style={styles.addButtonText}>Add Post</Text>
+              <Pressable
+                style={[styles.addButton, submitting && { opacity: 0.6 }]}
+                onPress={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.addButtonText}>Add Post</Text>
+                )}
               </Pressable>
             </View>
           </ScrollView>
@@ -223,44 +240,51 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   tagsLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#2F2632',
     marginBottom: 8,
   },
-  tagsEditor: {
+  tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
   },
-  tagInput: {
-    minWidth: 80,
-    maxWidth: 120,
-    height: 38,
-    borderRadius: 999,
+  tagInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#EFE7EC',
-    paddingHorizontal: 12,
-    color: '#2F2632',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    height: 36,
+  },
+  tagInput: {
+    minWidth: 60,
+    maxWidth: 100,
     fontSize: 13,
-    marginRight: 8,
-    marginBottom: 8,
+    color: '#2F2632',
+  },
+  removeTag: {
+    paddingLeft: 4,
+  },
+  removeTagText: {
+    fontSize: 16,
+    color: '#9B8F9D',
+    lineHeight: 18,
   },
   addTagButton: {
-    height: 38,
+    height: 36,
     borderRadius: 999,
     backgroundColor: '#F8E5F1',
-    borderWidth: 1,
-    borderColor: '#EFD4E4',
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-    marginBottom: 8,
   },
-  addTagButtonText: {
+  addTagText: {
     color: '#C44A93',
     fontWeight: '700',
     fontSize: 13,
@@ -286,7 +310,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#D85AAF',
+    backgroundColor: '#D3327C',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 5,

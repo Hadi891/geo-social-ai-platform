@@ -7,30 +7,46 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type StoryAvatarProps = {
   imageSource: ImageSourcePropType;
   name?: string;
   storyImages: ImageSourcePropType[];
-  onOpenStories?: (images: ImageSourcePropType[]) => void;
+  seen?: boolean;
+  onOpenStories?: () => void;
 };
 
 export default function StoryAvatar({
   imageSource,
   name,
-  storyImages,
+  storyImages: _storyImages,
+  seen = false,
   onOpenStories,
 }: StoryAvatarProps) {
   return (
     <Pressable
       style={styles.container}
-      onPress={() => onOpenStories?.(storyImages)}
+      onPress={() => onOpenStories?.()}
     >
-      <View style={styles.outerRing}>
-        <View style={styles.innerRing}>
-          <Image source={imageSource} style={styles.image} />
+      {seen ? (
+        <View style={styles.seenRing}>
+          <View style={styles.avatarWrapper}>
+            <Image source={imageSource} style={styles.image} />
+          </View>
         </View>
-      </View>
+      ) : (
+        <LinearGradient
+          colors={['#D3327C', '#EF5873', '#F89855']}
+          start={{ x: 0.0, y: 1.0 }}
+          end={{ x: 1.0, y: 0.0 }}
+          style={styles.gradientRing}
+        >
+          <View style={styles.avatarWrapper}>
+            <Image source={imageSource} style={styles.image} />
+          </View>
+        </LinearGradient>
+      )}
 
       {name ? (
         <Text style={styles.name} numberOfLines={1}>
@@ -44,36 +60,45 @@ export default function StoryAvatar({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginRight: 14,
-    width: 68,
+    marginRight: 16,
+    width: 72,
   },
-  outerRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#E95AAE',
+  gradientRing: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 2,
+    padding: 3,
   },
-  innerRing: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+  seenRing: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 3,
+    borderWidth: 2,
+    borderColor: '#C8C8C8',
+  },
+  avatarWrapper: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 2,
   },
   image: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
   },
   name: {
-    marginTop: 6,
+    marginTop: 5,
     fontSize: 11,
-    color: '#4B3F4E',
+    color: '#1A1A1A',
     textAlign: 'center',
   },
 });

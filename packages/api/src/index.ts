@@ -88,8 +88,8 @@ export async function getUploadUrl(token: string, folder: string, file_type: str
     method: "POST",
     body: JSON.stringify({ folder, file_type }),
   });
-  const body = await res.json().catch(() => ({})) as { message?: string };
-  if (!res.ok) throw new Error((body as any).message ?? `POST /upload-url failed (${res.status})`);
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /upload-url failed (${res.status})`);
   return body as { upload_url: string; key: string };
 }
 
@@ -135,6 +135,196 @@ export async function sendAssistantMessage(token: string, message: string): Prom
   const body = await res.json().catch(() => ({})) as Record<string, any>;
   if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /assistant failed (${res.status})`);
   return body.reply as string;
+}
+
+// ── GET /posts ───────────────────────────────────────────────────────────────
+
+export type PostAuthor = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  profile_photo_url: string | null;
+};
+
+export type Post = {
+  id: string;
+  content: string | null;
+  media_url: string | null;
+  tags: string[];
+  created_at: string;
+  expires_at: string | null;
+  author: PostAuthor;
+  like_count: number;
+  comment_count: number;
+  liked_by_me: boolean;
+  distance_m: number | null;
+};
+
+export type PostsResponse = {
+  count: number;
+  limit: number;
+  offset: number;
+  radius_m: number;
+  posts: Post[];
+};
+
+export async function getPosts(
+  token: string,
+  opts: { limit?: number; offset?: number; radius?: number } = {}
+): Promise<PostsResponse> {
+  const params = new URLSearchParams();
+  if (opts.limit) params.set("limit", String(opts.limit));
+  if (opts.offset) params.set("offset", String(opts.offset));
+  if (opts.radius) params.set("radius", String(opts.radius));
+  const qs = params.toString();
+  const res = await apiFetch(token, `/posts${qs ? `?${qs}` : ""}`, { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /posts failed (${res.status})`);
+  return body as PostsResponse;
+}
+
+// ── POST /posts ──────────────────────────────────────────────────────────────
+
+export async function createPost(
+  token: string,
+  payload: { content?: string; media_url?: string; tags?: string[] }
+): Promise<any> {
+  const res = await apiFetch(token, "/posts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /posts failed (${res.status})`);
+  return body;
+}
+
+// ── POST /posts/like ─────────────────────────────────────────────────────────
+
+export async function likePost(token: string, post_id: string): Promise<void> {
+  const res = await apiFetch(token, "/posts/like", {
+    method: "POST",
+    body: JSON.stringify({ post_id }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `POST /posts/like failed (${res.status})`);
+  }
+}
+
+// ── DELETE /posts/like ───────────────────────────────────────────────────────
+
+export async function unlikePost(token: string, post_id: string): Promise<void> {
+  const res = await apiFetch(token, "/posts/like", {
+    method: "DELETE",
+    body: JSON.stringify({ post_id }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `DELETE /posts/like failed (${res.status})`);
+  }
+}
+
+// ── POST /posts/comment ──────────────────────────────────────────────────────
+
+export type Comment = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: PostAuthor;
+};
+
+export async function addComment(
+  token: string,
+  post_id: string,
+  content: string
+): Promise<any> {
+  const res = await apiFetch(token, "/posts/comment", {
+    method: "POST",
+    body: JSON.stringify({ post_id, content }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /posts/comment failed (${res.status})`);
+  return body;
+}
+
+// ── GET /posts/comments ──────────────────────────────────────────────────────
+
+export async function getComments(
+  token: string,
+  post_id: string
+): Promise<{ post_id: string; count: number; comments: Comment[] }> {
+  const res = await apiFetch(token, `/posts/comments?post_id=${post_id}`, { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /posts/comments failed (${res.status})`);
+  return body as { post_id: string; count: number; comments: Comment[] };
+}
+
+// ── Stories ──────────────────────────────────────────────────────────────────
+
+export type StoryAuthor = {
+  id: string;
+  name: string;
+  profile_photo_url: string | null;
+};
+
+export type Story = {
+  id: string;
+  media_url: string | null;
+  media_type: string;
+  caption: string | null;
+  created_at: string;
+  expires_at: string;
+  viewed_by_me: boolean;
+  author?: StoryAuthor;
+};
+
+export type StoriesFeedResponse = {
+  count: number;
+  stories: Story[];
+};
+
+export type MyStoriesResponse = {
+  user_id: string;
+  count: number;
+  stories: Story[];
+};
+
+export async function getStoriesFeed(token: string): Promise<StoriesFeedResponse> {
+  const res = await apiFetch(token, "/stories/feed", { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /stories/feed failed (${res.status})`);
+  return body as StoriesFeedResponse;
+}
+
+export async function getMyStories(token: string): Promise<MyStoriesResponse> {
+  const res = await apiFetch(token, "/stories/mine", { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /stories/mine failed (${res.status})`);
+  return body as MyStoriesResponse;
+}
+
+export async function createStory(
+  token: string,
+  payload: { media_url: string; media_type: string; caption?: string }
+): Promise<Story> {
+  const res = await apiFetch(token, "/stories", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /stories failed (${res.status})`);
+  return body as Story;
+}
+
+export async function markStoryViewed(token: string, story_id: string): Promise<void> {
+  const res = await apiFetch(token, "/stories/view", {
+    method: "POST",
+    body: JSON.stringify({ story_id }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `POST /stories/view failed (${res.status})`);
+  }
 }
 
 // ── GET /nearby ───────────────────────────────────────────────────────────────

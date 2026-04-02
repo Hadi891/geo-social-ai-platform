@@ -14,50 +14,33 @@ type MyStoryAvatarProps = {
   imageSource: ImageSourcePropType;
   name?: string;
   storyImages: ImageSourcePropType[];
-  onOpenStories?: (images: ImageSourcePropType[]) => void;
+  onOpenStories?: () => void;
   onAddStory?: () => void;
 };
 
 export default function MyStoryAvatar({
   imageSource,
-  name = 'Me',
-  storyImages,
+  name = 'Your story',
+  storyImages: _storyImages,
   onOpenStories,
   onAddStory,
 }: MyStoryAvatarProps) {
   const handlePress = () => {
-    Alert.alert(
-      'Your story',
-      'Choose an option',
-      [
-        {
-          text: 'View story',
-          onPress: () => onOpenStories?.(storyImages),
-        },
-        {
-          text: 'Add story',
-          onPress: () => onAddStory?.(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+    Alert.alert('Your Story', 'Choose an option', [
+      { text: 'View story', onPress: () => onOpenStories?.() },
+      { text: 'Add to story', onPress: () => onAddStory?.() },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   return (
     <Pressable style={styles.container} onPress={handlePress}>
-      <View style={styles.outerRing}>
-        <View style={styles.innerRing}>
-          <Image source={imageSource} style={styles.image} />
-
-          <View style={styles.plusBadge}>
-            <Ionicons name="add" size={12} color="#FFFFFF" />
-          </View>
+      <View style={styles.avatarWrapper}>
+        <Image source={imageSource} style={styles.image} />
+        <View style={styles.plusBadge}>
+          <Ionicons name="add" size={14} color="#FFFFFF" />
         </View>
       </View>
-
       <Text style={styles.name} numberOfLines={1}>
         {name}
       </Text>
@@ -68,50 +51,41 @@ export default function MyStoryAvatar({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginRight: 14,
-    width: 68,
+    marginRight: 16,
+    width: 72,
   },
-  outerRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#E95AAE',
+  avatarWrapper: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 1.5,
+    borderColor: '#DBDBDB',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 2,
-  },
-  innerRing: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-    position: 'relative',
+    backgroundColor: '#FAFAFA',
   },
   image: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
   },
   plusBadge: {
     position: 'absolute',
-    right: -1,
-    bottom: -1,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#E95AAE',
+    right: 0,
+    bottom: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#0095F6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   name: {
-    marginTop: 6,
+    marginTop: 5,
     fontSize: 11,
-    color: '#4B3F4E',
+    color: '#1A1A1A',
     textAlign: 'center',
   },
 });

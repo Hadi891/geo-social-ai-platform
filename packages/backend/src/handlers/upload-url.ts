@@ -10,7 +10,7 @@ import { logInfo, logError } from "../utils/logger";
 const s3 = new S3Client({ region: process.env["AWS_REGION"] ?? "eu-north-1" });
 const BUCKET = process.env["S3_BUCKET"] ?? "";
 
-const ALLOWED_FOLDERS = ["profile-images", "posts", "chat-media"] as const;
+const ALLOWED_FOLDERS = ["profile-images", "posts", "chat-media", "stories"] as const;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4"];
 
 type UploadUrlBody = {

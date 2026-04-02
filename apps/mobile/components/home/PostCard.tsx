@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Image,
-  ImageSourcePropType,
   Pressable,
   StyleSheet,
   Text,
@@ -10,50 +9,87 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 
 type PostCardProps = {
-  profileImageSource: ImageSourcePropType;
+  profileImageUri?: string | null;
   name: string;
-  age?: number;
-  distance: string;
-  postImageSource: ImageSourcePropType;
+  age?: number | null;
+  distance?: string | number | null;
+  postImageUri?: string | null;
   caption: string;
-  tags: string[];
+  tags?: string[];
+  likeCount?: number;
+  commentCount?: number;
+  likedByMe?: boolean;
+  onLike?: () => void;
+  onComment?: () => void;
 };
 
+const PLACEHOLDER = require('@/assets/images/logo.png');
+
 export default function PostCard({
-  profileImageSource,
+  profileImageUri,
   name,
   age,
   distance,
-  postImageSource,
+  postImageUri,
   caption,
   tags,
+  likeCount = 0,
+  commentCount = 0,
+  likedByMe = false,
+  onLike,
+  onComment,
 }: PostCardProps) {
+  const distanceLabel =
+    distance != null
+      ? typeof distance === 'number'
+        ? distance >= 1000
+          ? `${Math.round(distance / 1000)} km away`
+          : `${Math.round(distance)} m away`
+        : distance
+      : null;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Image source={profileImageSource} style={styles.profileImage} />
-
+          <Image
+            source={profileImageUri ? { uri: profileImageUri } : PLACEHOLDER}
+            style={styles.profileImage}
+          />
           <View>
             <Text style={styles.nameText}>
               {name}
               {age ? `, ${age}` : ''}
             </Text>
-            <Text style={styles.distance}>{`${distance} km away`}</Text>
+            {distanceLabel && <Text style={styles.distance}>{distanceLabel}</Text>}
           </View>
         </View>
       </View>
 
-      <Image source={postImageSource} style={styles.postImage} />
+      {postImageUri ? (
+        <Image source={{ uri: postImageUri }} style={styles.postImage} />
+      ) : null}
 
       <View style={styles.actionsRow}>
         <View style={styles.leftActions}>
-          <Pressable style={styles.iconButton}>
-            <Ionicons name="heart-outline" size={22} color="#3E3342" />
+          <Pressable style={styles.iconButton} onPress={onLike}>
+            <Ionicons
+              name={likedByMe ? 'heart' : 'heart-outline'}
+              size={22}
+              color={likedByMe ? '#D3327C' : '#3E3342'}
+            />
+            {likeCount > 0 && (
+              <Text style={[styles.countText, likedByMe && { color: '#D3327C' }]}>
+                {likeCount}
+              </Text>
+            )}
           </Pressable>
 
-          <Pressable style={styles.iconButton}>
+          <Pressable style={styles.iconButton} onPress={onComment}>
             <Feather name="message-circle" size={20} color="#3E3342" />
+            {commentCount > 0 && (
+              <Text style={styles.countText}>{commentCount}</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -63,13 +99,15 @@ export default function PostCard({
         {caption}
       </Text>
 
-      <View style={styles.tagsRow}>
-        {tags.map((tag) => (
-          <View key={tag} style={styles.tagChip}>
-            <Text style={styles.tagText}>{tag}</Text>
-          </View>
-        ))}
-      </View>
+      {tags && tags.length > 0 && (
+        <View style={styles.tagsRow}>
+          {tags.map((tag) => (
+            <View key={tag} style={styles.tagChip}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -128,7 +166,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconButton: {
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  countText: {
+    fontSize: 13,
+    color: '#3E3342',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   caption: {
     marginTop: 10,

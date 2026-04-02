@@ -76,11 +76,15 @@ CREATE TABLE IF NOT EXISTS posts (
     author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT,
     media_url TEXT,
+    tags TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     expires_at TIMESTAMP,
     CHECK (content IS NOT NULL OR media_url IS NOT NULL)
 );
+
+-- Migrate existing installations: add tags if not present
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
 
 CREATE TABLE IF NOT EXISTS post_comments (
     id UUID PRIMARY KEY,

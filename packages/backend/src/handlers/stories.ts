@@ -1,12 +1,26 @@
 import type { APIGatewayProxyEvent } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isString, isUUID } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, forbidden, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
 
+const s3 = new S3Client({ region: process.env["AWS_REGION"] ?? "eu-north-1" });
+const BUCKET = process.env["S3_BUCKET"] ?? "";
+
 const ALLOWED_MEDIA_TYPES = ["image", "video"];
+
+async function presign(key: string | null): Promise<string | null> {
+  if (!key || !BUCKET || key.startsWith("http")) return key;
+  try {
+    return await getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: 3600 });
+  } catch {
+    return null;
+  }
+}
 
 // ─── POST /stories ────────────────────────────────────────────────────────────
 
@@ -33,7 +47,7 @@ export async function handleCreateStory(event: APIGatewayProxyEvent) {
     if (userResult.rowCount === 0) return notFound("User profile not found.");
     const authorId: string = userResult.rows[0].id;
 
-    logInfo("/stories", { authorId, mediaType: media_type });
+    logInfo("/stories POST", { authorId, mediaType: media_type });
 
     const result = await db.query(
       `INSERT INTO stories (id, author_id, media_url, media_type, caption, expires_at)
@@ -44,12 +58,13 @@ export async function handleCreateStory(event: APIGatewayProxyEvent) {
 
     return created(result.rows[0]);
   } catch (err) {
-    logError("/stories", err, { sub: claims.sub });
+    logError("/stories POST", err, { sub: claims.sub });
     return internalError();
   }
 }
 
 // ─── GET /stories ─────────────────────────────────────────────────────────────
+// Returns a specific user's active stories (including the caller's own).
 
 export async function handleGetUserStories(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
@@ -69,40 +84,69 @@ export async function handleGetUserStories(event: APIGatewayProxyEvent) {
 
     logInfo("/stories GET", { viewerId, targetUserId: user_id });
 
-    // Verify target user exists
-    const targetResult = await db.query(
-      "SELECT id FROM users WHERE id = $1",
-      [user_id]
-    );
+    const targetResult = await db.query("SELECT id FROM users WHERE id = $1", [user_id]);
     if (targetResult.rowCount === 0) return notFound("User not found.");
 
     const result = await db.query(
-      `SELECT
-         s.id,
-         s.media_url,
-         s.media_type,
-         s.caption,
-         s.created_at,
-         s.expires_at,
-         EXISTS(
-           SELECT 1 FROM story_views
-           WHERE story_id = s.id AND viewer_id = $2
-         ) AS viewed_by_me
+      `SELECT s.id, s.media_url, s.media_type, s.caption, s.created_at, s.expires_at,
+              EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $2) AS viewed_by_me
        FROM stories s
-       WHERE s.author_id = $1
-         AND s.expires_at > NOW()
+       WHERE s.author_id = $1 AND s.expires_at > NOW()
        ORDER BY s.created_at ASC`,
       [user_id, viewerId]
     );
 
-    return ok({ user_id, count: result.rows.length, stories: result.rows });
+    const stories = await Promise.all(result.rows.map(async (row: any) => ({
+      ...row,
+      media_url: await presign(row.media_url),
+    })));
+
+    return ok({ user_id, count: stories.length, stories });
   } catch (err) {
     logError("/stories GET", err, { sub: claims.sub });
     return internalError();
   }
 }
 
+// ─── GET /stories/mine ────────────────────────────────────────────────────────
+// Returns the caller's own active stories (convenience — no user_id param needed).
+
+export async function handleGetMyStories(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  try {
+    const userResult = await db.query(
+      "SELECT id FROM users WHERE cognito_sub = $1",
+      [claims.sub]
+    );
+    if (userResult.rowCount === 0) return notFound("User profile not found.");
+    const userId: string = userResult.rows[0].id;
+
+    logInfo("/stories/mine", { userId });
+
+    const result = await db.query(
+      `SELECT id, media_url, media_type, caption, created_at, expires_at
+       FROM stories
+       WHERE author_id = $1 AND expires_at > NOW()
+       ORDER BY created_at ASC`,
+      [userId]
+    );
+
+    const stories = await Promise.all(result.rows.map(async (row: any) => ({
+      ...row,
+      media_url: await presign(row.media_url),
+    })));
+
+    return ok({ user_id: userId, count: stories.length, stories });
+  } catch (err) {
+    logError("/stories/mine", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
 // ─── GET /stories/feed ────────────────────────────────────────────────────────
+// Returns active stories from the caller's matches only, grouped by author.
 
 export async function handleGetStoriesFeed(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
@@ -118,8 +162,6 @@ export async function handleGetStoriesFeed(event: APIGatewayProxyEvent) {
 
     logInfo("/stories/feed", { viewerId });
 
-    // Return non-expired stories from other users, grouped by author (most recent
-    // activity first), with author info and viewed_by_me flag.
     const result = await db.query(
       `SELECT
          s.id,
@@ -129,24 +171,40 @@ export async function handleGetStoriesFeed(event: APIGatewayProxyEvent) {
          s.created_at,
          s.expires_at,
          EXISTS(
-           SELECT 1 FROM story_views
-           WHERE story_id = s.id AND viewer_id = $1
+           SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1
          ) AS viewed_by_me,
          json_build_object(
            'id', u.id,
            'name', u.name,
-           'profile_photo_url', ph.image_url
+           'profile_photo_key', ph.image_url
          ) AS author
        FROM stories s
        JOIN users u ON u.id = s.author_id
        LEFT JOIN photos ph ON ph.user_id = u.id AND ph.is_profile_photo = TRUE
        WHERE s.expires_at > NOW()
          AND s.author_id <> $1
+         AND EXISTS (
+           SELECT 1 FROM matches
+           WHERE (user_a = $1 AND user_b = s.author_id)
+              OR (user_b = $1 AND user_a = s.author_id)
+         )
        ORDER BY u.id, s.created_at ASC`,
       [viewerId]
     );
 
-    return ok({ count: result.rows.length, stories: result.rows });
+    // Generate presigned URLs for media and author profile photos
+    const stories = await Promise.all(result.rows.map(async (row: any) => {
+      const author = { ...row.author };
+      author.profile_photo_url = await presign(author.profile_photo_key);
+      delete author.profile_photo_key;
+      return {
+        ...row,
+        media_url: await presign(row.media_url),
+        author,
+      };
+    }));
+
+    return ok({ count: stories.length, stories });
   } catch (err) {
     logError("/stories/feed", err, { sub: claims.sub });
     return internalError();
@@ -180,16 +238,12 @@ export async function handleViewStory(event: APIGatewayProxyEvent) {
       [story_id]
     );
     if (storyResult.rowCount === 0) return notFound("Story not found.");
-
-    const story = storyResult.rows[0];
-    if (new Date(story.expires_at) <= new Date()) {
+    if (new Date(storyResult.rows[0].expires_at) <= new Date()) {
       return badRequest("Story has expired.");
     }
 
     await db.query(
-      `INSERT INTO story_views (story_id, viewer_id)
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
+      `INSERT INTO story_views (story_id, viewer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [story_id, viewerId]
     );
 
