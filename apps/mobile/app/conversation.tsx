@@ -66,16 +66,6 @@ export default function ConversationScreen() {
           <Text style={[styles.headerName, { color: colors.text }]}>{name ?? 'Chat'}, 24</Text>
           <Text style={[styles.headerStatus, { color: colors.pink }]}>ONLINE</Text>
         </View>
-
-        <Pressable style={styles.headerIcon}>
-          <Ionicons name="call-outline" size={22} color={colors.pink} />
-        </Pressable>
-        <Pressable style={styles.headerIcon}>
-          <Ionicons name="videocam-outline" size={22} color={colors.pink} />
-        </Pressable>
-        <Pressable style={styles.headerIcon}>
-          <Ionicons name="ellipsis-vertical" size={22} color={colors.pink} />
-        </Pressable>
       </View>
 
       <KeyboardAvoidingView
