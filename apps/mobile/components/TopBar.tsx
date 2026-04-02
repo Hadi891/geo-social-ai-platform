@@ -1,24 +1,25 @@
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNotifications } from '@/components/notification/NotificationContext';
+
+type FeatherIconName = ComponentProps<typeof Feather>['name'];
 
 type TopBarProps = {
   title?: string;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
+  leftIcon?: FeatherIconName;
   onLeftPress?: () => void;
-  onRightPress?: () => void;
 };
 
 export default function TopBar({
   title = 'Mingle',
   leftIcon = 'settings',
-  rightIcon = 'heart-outline',
   onLeftPress,
-  onRightPress,
 }: TopBarProps) {
+  const { isOpen, toggle } = useNotifications();
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
@@ -28,8 +29,12 @@ export default function TopBar({
 
         <Text style={styles.title}>{title}</Text>
 
-        <Pressable style={styles.iconButton} onPress={onRightPress}>
-          <Ionicons name={rightIcon} size={22} color="#C05AA8" />
+        <Pressable style={styles.iconButton} onPress={toggle}>
+          <Ionicons
+            name={isOpen ? 'heart' : 'heart-outline'}
+            size={22}
+            color="#C05AA8"
+          />
         </Pressable>
       </View>
     </SafeAreaView>
