@@ -42,6 +42,7 @@ class CognitoAsyncStorage implements ICognitoStorage {
   clear(): void {
     const keys = Object.keys(this.cache);
     this.cache = {};
+    this.loaded = false;
     if (keys.length) AsyncStorage.multiRemove(keys);
   }
 }
@@ -104,6 +105,7 @@ export function cognitoResendCode(email: string): Promise<void> {
 export function cognitoSignOut(): void {
   const user = userPool.getCurrentUser();
   if (user) user.signOut();
+  cognitoStorage.clear();
 }
 
 /** Get the JWT id token for the currently signed-in user. */
