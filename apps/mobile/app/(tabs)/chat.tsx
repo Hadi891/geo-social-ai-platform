@@ -22,7 +22,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
-        <TopBar title="Mingle Chat" onLeftPress={() => router.push('/settings')} />
+        <TopBar title="Mingle Chat" onLeftPress={() => router.navigate('/settings')} />
 
       <View style={styles.content}>
         <Text>Chat List Page</Text>

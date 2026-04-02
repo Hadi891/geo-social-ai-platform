@@ -25,7 +25,7 @@ export default function MapScreen() {
     <View style={styles.container}>
       <TopBar
         title="Mingle Map"
-        onLeftPress={() => router.push('/settings')}
+        onLeftPress={() => router.navigate('/settings')}
       />
 
       <View style={styles.content}>

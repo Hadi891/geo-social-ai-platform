@@ -334,7 +334,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-      <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
+      <TopBar title="Mingle Profile" onLeftPress={() => router.navigate('/settings')} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#7C57C8" />
         </View>
@@ -345,7 +345,7 @@ export default function ProfileScreen() {
   if (error || !profile) {
     return (
       <View style={styles.container}>
-        <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
+        <TopBar title="Mingle Profile" onLeftPress={() => router.navigate('/settings')} />
         <View style={styles.centered}>
           <Text style={styles.errorText}>{error || 'Profile not found'}</Text>
         </View>
@@ -357,7 +357,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
+      <TopBar title="Mingle Profile" onLeftPress={() => router.navigate('/settings')} />
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}

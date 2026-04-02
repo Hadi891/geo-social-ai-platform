@@ -41,10 +41,6 @@ export default function WelcomeScreen() {
 
       <View style={styles.content}>
 
-        <Link href="/home" asChild>
-        <Pressable><Text>Temp Home Button</Text></Pressable>
-        </Link>
-
         <Image
           source={require('@/assets/images/logo.png')}
           style={styles.logo}

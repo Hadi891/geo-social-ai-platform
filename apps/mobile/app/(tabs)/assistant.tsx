@@ -138,7 +138,7 @@ export default function AssistantScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <TopBar title="Mingle Assistant" onLeftPress={() => router.push('/settings')} />
+        <TopBar title="Mingle Assistant" onLeftPress={() => router.navigate('/settings')} />
 
 
         <View style={styles.content}>

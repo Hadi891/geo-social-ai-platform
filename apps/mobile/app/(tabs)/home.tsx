@@ -311,7 +311,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <TopBar title="Mingle Home" onLeftPress={() => router.push('/settings')} />
+        <TopBar title="Mingle Home" onLeftPress={() => router.navigate('/settings')} />
         <ActivityIndicator size="large" color={colors.pink} />
       </View>
     );
@@ -319,7 +319,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Mingle Home" onLeftPress={() => router.push('/settings')} />
+      <TopBar title="Mingle Home" onLeftPress={() => router.navigate('/settings')} />
 
       <View style={styles.content}>
         <FlatList
