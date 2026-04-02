@@ -43,8 +43,10 @@ export default function ChatScreen() {
           </>
         }
         renderItem={({ item }) => (
-          <ConversationItem item={item} onPress={() => {}} />
-        )}
+        <ConversationItem
+          item={item}
+          onPress={() => router.push({ pathname: '/conversation', params: { name: item.name } })}
+        />        )}
       />
     </View>
   );

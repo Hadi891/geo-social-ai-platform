@@ -5,8 +5,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-
+import { useTheme } from '../context/ThemeContext';
 const LOGO = require('@/assets/images/logo.png');
 
 type Message = {
