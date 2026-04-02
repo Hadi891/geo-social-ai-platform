@@ -38,6 +38,12 @@ import {
   type Story,
 } from '@repo/api';
 
+import IntrusionScorePopup, {
+  IntrusionQuestion,
+} from '@/components/intrusionScore/IntrusionScorePopup';
+import intrusionQuestions from '@/assets/intrusion.json';
+import IntrusionTestPrompt from '@/components/intrusionScore/IntrusionTestPrompt';
+
 const LOGO_IMAGE = require('@/assets/images/logo.png');
 const PAGE_SIZE = 20;
 
@@ -63,6 +69,11 @@ export default function HomeScreen() {
   const viewedIdsRef = useRef<Set<string>>(new Set());
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
   const [startGroupIndex, setStartGroupIndex] = useState(0);
+
+  // ── Intrusion score ────────────────────────────────────────────────────────
+  const [isIntrusionPopupVisible, setIsIntrusionPopupVisible] = useState(false);
+  const [hasDismissedIntrusionPrompt, setHasDismissedIntrusionPrompt] = useState(false);
+  const shouldShowIntrusionPrompt = !hasDismissedIntrusionPrompt && !isIntrusionPopupVisible;
 
   // ── Fetch posts ────────────────────────────────────────────────────────────
   const fetchPosts = useCallback(async (offset = 0, append = false) => {
@@ -113,7 +124,7 @@ export default function HomeScreen() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [fetchPosts, fetchStories, getToken]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -289,6 +300,21 @@ export default function HomeScreen() {
       fontWeight: '700',
       color: colors.pink,
     },
+    intrusionButton: {
+      width: '100%',
+      marginBottom: 14,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#D85AAF',
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    intrusionButtonText: {
+      color: '#D85AAF',
+      fontSize: 15,
+      fontWeight: '800',
+    },
     postsContent: {
       paddingBottom: 18,
     },
@@ -366,6 +392,13 @@ export default function HomeScreen() {
               >
                 <Text style={styles.addPostButtonText}>+ Add a post</Text>
               </Pressable>
+
+              <Pressable
+                style={styles.intrusionButton}
+                onPress={() => setIsIntrusionPopupVisible(true)}
+              >
+                <Text style={styles.intrusionButtonText}>Calculate intrusion score</Text>
+              </Pressable>
             </View>
           }
           renderItem={({ item }) => (
@@ -419,7 +452,23 @@ export default function HomeScreen() {
         onClose={() => setCommentsVisible(false)}
         onCommentAdded={handleCommentAdded}
       />
+
+      <IntrusionTestPrompt
+        visible={shouldShowIntrusionPrompt}
+        onTakeIt={() => {
+          setHasDismissedIntrusionPrompt(true);
+          setIsIntrusionPopupVisible(true);
+        }}
+        onLater={() => {
+          setHasDismissedIntrusionPrompt(true);
+        }}
+      />
+
+      <IntrusionScorePopup
+        visible={isIntrusionPopupVisible}
+        onClose={() => setIsIntrusionPopupVisible(false)}
+        questions={intrusionQuestions as IntrusionQuestion[]}
+      />
     </View>
   );
 }
-

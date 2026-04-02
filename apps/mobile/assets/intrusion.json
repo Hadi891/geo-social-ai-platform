@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1,
+    "question": "At a party where you know very few people, you usually:",
+    "options": {
+      "A": "Start talking to several people right away",
+      "B": "Talk to a few people after a short warm-up",
+      "C": "Stay mostly with one person if possible",
+      "D": "Prefer to stay quiet and avoid too many interactions"
+    }
+  },
+  {
+    "id": 2,
+    "question": "After spending a long day with many people, you usually feel:",
+    "options": {
+      "A": "Energized and ready to keep socializing",
+      "B": "Fine, maybe a little tired",
+      "C": "Drained and in need of quiet time",
+      "D": "Very exhausted and wanting to be alone"
+    }
+  },
+  {
+    "id": 3,
+    "question": "When meeting someone new, you usually:",
+    "options": {
+      "A": "Find it easy to start the conversation",
+      "B": "Can do it, but need a little time",
+      "C": "Prefer if they start first",
+      "D": "Feel uncomfortable and avoid it if possible"
+    }
+  },
+  {
+    "id": 4,
+    "question": "In a group conversation, you usually:",
+    "options": {
+      "A": "Speak a lot and naturally take part",
+      "B": "Join in when you have something to say",
+      "C": "Mostly listen",
+      "D": "Prefer not to speak unless necessary"
+    }
+  },
+  {
+    "id": 5,
+    "question": "If you have free time on a weekend, you would rather:",
+    "options": {
+      "A": "Go out and meet many people",
+      "B": "Do something social with a small group",
+      "C": "Spend time with one close person",
+      "D": "Stay alone and recharge"
+    }
+  },
+  {
+    "id": 6,
+    "question": "When entering a room full of strangers, you usually:",
+    "options": {
+      "A": "Feel excited and curious",
+      "B": "Feel okay after a few minutes",
+      "C": "Feel a bit uncomfortable",
+      "D": "Feel strongly uneasy and want to leave"
+    }
+  },
+  {
+    "id": 7,
+    "question": "If someone does not reply quickly in a conversation, you tend to:",
+    "options": {
+      "A": "Not think much about it",
+      "B": "Wonder briefly but move on",
+      "C": "Start overthinking it a little",
+      "D": "Feel quite self-conscious or anxious about it"
+    }
+  },
+  {
+    "id": 8,
+    "question": "When working on a project, you usually prefer:",
+    "options": {
+      "A": "A highly interactive group environment",
+      "B": "A small collaborative team",
+      "C": "Mostly independent work with occasional discussion",
+      "D": "Working alone with minimal interaction"
+    }
+  },
+  {
+    "id": 9,
+    "question": "If you have to make the first move in a conversation, you usually feel:",
+    "options": {
+      "A": "Completely comfortable",
+      "B": "Slightly nervous but okay",
+      "C": "Quite hesitant",
+      "D": "Very uncomfortable"
+    }
+  },
+  {
+    "id": 10,
+    "question": "At social events, you usually stay:",
+    "options": {
+      "A": "Until the end and enjoy it",
+      "B": "For a good amount of time",
+      "C": "Only as long as needed",
+      "D": "As little as possible"
+    }
+  },
+  {
+    "id": 11,
+    "question": "If you are in a new class or workplace, you usually:",
+    "options": {
+      "A": "Introduce yourself to many people quickly",
+      "B": "Start interacting after observing a little",
+      "C": "Wait for others to approach you",
+      "D": "Keep interactions minimal at first"
+    }
+  },
+  {
+    "id": 12,
+    "question": "When you receive an invitation to a large gathering, your first reaction is usually:",
+    "options": {
+      "A": "Excitement",
+      "B": "Mild interest",
+      "C": "Uncertainty",
+      "D": "Reluctance"
+    }
+  },
+  {
+    "id": 13,
+    "question": "If a conversation becomes very lively and everyone is talking, you usually:",
+    "options": {
+      "A": "Enjoy it and engage more",
+      "B": "Try to follow and contribute when possible",
+      "C": "Step back and listen more",
+      "D": "Feel overwhelmed and withdraw"
+    }
+  },
+  {
+    "id": 14,
+    "question": "When you need to recharge emotionally, you usually prefer:",
+    "options": {
+      "A": "Going out with people",
+      "B": "Being with one or two close people",
+      "C": "A mix of solitude and limited contact",
+      "D": "Being completely alone"
+    }
+  },
+  {
+    "id": 15,
+    "question": "When starting a conversation with someone you like, you usually:",
+    "options": {
+      "A": "Feel confident and do it easily",
+      "B": "Feel a little nervous but still try",
+      "C": "Hesitate a lot before doing it",
+      "D": "Avoid doing it unless absolutely necessary"
+    }
+  }
+]
