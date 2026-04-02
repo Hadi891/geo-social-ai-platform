@@ -2,6 +2,8 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationActivity } from './types';
+import { formatNotificationTime } from './formatNotificationTime';
+import { getNotificationText } from './getNotificationText';
 
 type Props = {
   item: NotificationActivity;
@@ -33,11 +35,10 @@ export default function ActivityNotificationCard({ item }: Props) {
 
       <View style={styles.content}>
         <Text style={styles.message}>
-          <Text style={styles.name}>{item.name} </Text>
-          {item.message}
+          {getNotificationText(item)}
         </Text>
 
-        <Text style={styles.time}>{item.time}</Text>
+        <Text style={styles.time}>{formatNotificationTime(item.createdAt)}</Text>
       </View>
 
       <View style={styles.dot} />
@@ -95,14 +96,12 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: '#2A1F26',
   },
-  name: {
-    fontWeight: '700',
-  },
   time: {
     marginTop: 4,
     fontSize: 11,
     fontWeight: '600',
     color: '#A09AA0',
+    textTransform: 'uppercase',
   },
   dot: {
     width: 7,
