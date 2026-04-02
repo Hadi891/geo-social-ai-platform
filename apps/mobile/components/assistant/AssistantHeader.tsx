@@ -1,55 +1,24 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
 
-type AssistantHeaderProps = {
-  title: string;
-  subtitle: string;
-};
-
-export default function AssistantHeader({
-  title,
-  subtitle,
-}: AssistantHeaderProps) {
+export default function AssistantHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <MaterialCommunityIcons
-          name="robot-happy-outline"
-          size={28}
-          color="#B33A90"
-        />
+      <View style={[styles.iconCircle, { backgroundColor: colors.pinkBg, borderColor: colors.pink }]}>
+        <MaterialCommunityIcons name="robot-happy-outline" size={28} color={colors.pink} />
       </View>
-
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.subtitle, { color: colors.subText }]}>{subtitle}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 2.5,
-    borderColor: '#D45C91',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF7FB',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2D1F2A',
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#7D6879',
-  },
+  container:  { alignItems: 'center' },
+  iconCircle: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  title:      { fontSize: 28, fontWeight: '700' },
+  subtitle:   { marginTop: 4, fontSize: 14 },
 });

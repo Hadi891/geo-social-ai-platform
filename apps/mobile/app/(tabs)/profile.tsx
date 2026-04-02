@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-
 import TopBar from '@/components/TopBar';
+import { useTheme } from '@/context/ThemeContext';
 import ProfileHeaderCard from '@/components/profile/ProfileHeaderCard';
 import ProfileInfoSection from '@/components/profile/ProfileInfoSection';
 import InterestChips from '@/components/profile/InterestChips';
@@ -71,6 +71,7 @@ const getImageSource = (image: string | number): ImageSourcePropType =>
   typeof image === 'string' ? { uri: image } : image;
 
 export default function ProfileScreen() {
+    const { colors } = useTheme();
   const { getToken, doSignOut } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -81,7 +82,28 @@ export default function ProfileScreen() {
   const [editSectionY, setEditSectionY] = useState(0);
   const [showEditSection, setShowEditSection] = useState(false);
   const [shouldScrollToEdit, setShouldScrollToEdit] = useState(false);
-
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: colors.background,
+      },
+      contentContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 140,
+      },
+      centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      errorText: {
+        color: '#D93025',
+        fontSize: 14,
+        textAlign: 'center',
+        paddingHorizontal: 24,
+      },
+    });
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editableProfile, setEditableProfile] = useState<EditableProfileFields>({
     firstName: '',
@@ -268,7 +290,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <TopBar title="Mingle Profile" />
+      <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#7C57C8" />
         </View>
@@ -279,7 +301,7 @@ export default function ProfileScreen() {
   if (error || !profile) {
     return (
       <View style={styles.container}>
-        <TopBar title="Mingle Profile" />
+        <TopBar title="Mingle Profile" onLeftPress={() => router.push('/settings')} />
         <View style={styles.centered}>
           <Text style={styles.errorText}>{error || 'Profile not found'}</Text>
         </View>
@@ -333,25 +355,3 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCF9FC',
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 140,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#D93025',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-});

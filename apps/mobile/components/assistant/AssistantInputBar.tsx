@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
 
-type AssistantInputBarProps = {
+type Props = {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
@@ -10,30 +11,23 @@ type AssistantInputBarProps = {
   onPressAdd?: () => void;
 };
 
-export default function AssistantInputBar({
-  value,
-  onChangeText,
-  onSend,
-  placeholder = 'Message...',
-  onPressAdd,
-}: AssistantInputBarProps) {
+export default function AssistantInputBar({ value, onChangeText, onSend, placeholder = 'Message...', onPressAdd }: Props) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
       <Pressable style={styles.leftIconButton} onPress={onPressAdd}>
-        <Ionicons name="add-circle-outline" size={22} color="#B33A90" />
+        <Ionicons name="add-circle-outline" size={22} color={colors.pink} />
       </Pressable>
-
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#A591A1"
+        placeholderTextColor={colors.subText}
         onSubmitEditing={onSend}
         returnKeyType="send"
       />
-
-      <Pressable style={styles.sendButton} onPress={onSend}>
+      <Pressable style={[styles.sendButton, { backgroundColor: colors.pink }]} onPress={onSend}>
         <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
       </Pressable>
     </View>
@@ -41,33 +35,8 @@ export default function AssistantInputBar({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    minHeight: 58,
-    borderRadius: 20,
-    backgroundColor: '#F6EAF2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 10,
-    paddingRight: 8,
-  },
-  leftIconButton: {
-    width: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#3A2A36',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-  },
-  sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#D45C91',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  container:      { minHeight: 58, borderRadius: 20, flexDirection: 'row', alignItems: 'center', paddingLeft: 10, paddingRight: 8 },
+  leftIconButton: { width: 34, alignItems: 'center', justifyContent: 'center' },
+  input:          { flex: 1, fontSize: 15, paddingHorizontal: 8, paddingVertical: 12 },
+  sendButton:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });
