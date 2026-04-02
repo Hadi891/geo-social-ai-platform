@@ -21,8 +21,9 @@ import AddPostModal from '@/components/home/AddPostModal';
 // INTROSION SCORE RELATED
 import IntrusionScorePopup, {
   IntrusionQuestion,
-} from '@/components/IntrusionScorePopup';
+} from '@/components/intrusionScore/IntrusionScorePopup';
 import intrusionQuestions from '@/assets/intrusion.json';
+import IntrusionTestPrompt from '@/components/intrusionScore/IntrusionTestPrompt';
 
 
 const LOGO_IMAGE = require('@/assets/images/logo.png');
@@ -103,7 +104,14 @@ export default function HomeScreen() {
 // INTROSION SCORE RELATED
   const SHOW_INTRUSION_CALCULATOR = true;
   const [isIntrusionPopupVisible, setIsIntrusionPopupVisible] = useState(false);
+  const SHOW_INTRUSION_PROMPT = true;
+  const [hasDismissedIntrusionPrompt, setHasDismissedIntrusionPrompt] =
+    useState(false);
 
+  const shouldShowIntrusionPrompt =
+    SHOW_INTRUSION_PROMPT &&
+    !hasDismissedIntrusionPrompt &&
+    !isIntrusionPopupVisible;
 
 
   const openStoryViewer = (images: ImageSourcePropType[]) => {
@@ -251,6 +259,17 @@ export default function HomeScreen() {
 
 
 {/*INTROSION RELATED*/}
+<IntrusionTestPrompt
+  visible={shouldShowIntrusionPrompt}
+  onTakeIt={() => {
+    setHasDismissedIntrusionPrompt(true);
+    setIsIntrusionPopupVisible(true);
+  }}
+  onLater={() => {
+    setHasDismissedIntrusionPrompt(true);
+  }}
+/>
+
       {SHOW_INTRUSION_CALCULATOR && (
         <IntrusionScorePopup
           visible={isIntrusionPopupVisible}
