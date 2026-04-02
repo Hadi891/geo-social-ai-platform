@@ -18,7 +18,16 @@ import PostCard from '@/components/home/PostCard';
 import StoryViewerModal from '@/components/home/StoryViewerModal';
 import AddPostModal from '@/components/home/AddPostModal';
 
+// INTROSION SCORE RELATED
+import IntrusionScorePopup, {
+  IntrusionQuestion,
+} from '@/components/IntrusionScorePopup';
+import intrusionQuestions from '@/assets/intrusion.json';
+
+
 const LOGO_IMAGE = require('@/assets/images/logo.png');
+
+
 
 const stories = [
   {
@@ -90,6 +99,12 @@ export default function HomeScreen() {
 
   const [allPosts, setAllPosts] = useState(initialPosts);
   const [addPostVisible, setAddPostVisible] = useState(false);
+
+// INTROSION SCORE RELATED
+  const SHOW_INTRUSION_CALCULATOR = true;
+  const [isIntrusionPopupVisible, setIsIntrusionPopupVisible] = useState(false);
+
+
 
   const openStoryViewer = (images: ImageSourcePropType[]) => {
     setSelectedStoryImages(images);
@@ -193,6 +208,17 @@ export default function HomeScreen() {
               >
                 <Text style={styles.addPostButtonText}>+ Add a post</Text>
               </Pressable>
+
+
+               {/*INTROSION RELATED*/}
+              {SHOW_INTRUSION_CALCULATOR && (
+                <Pressable
+                  style={styles.intrusionButton}
+                  onPress={() => setIsIntrusionPopupVisible(true)}
+                >
+                  <Text style={styles.intrusionButtonText}>Calculate intrusion score</Text>
+                </Pressable>
+              )}
             </View>
           }
           renderItem={({ item }) => (
@@ -221,6 +247,18 @@ export default function HomeScreen() {
         onSubmit={handleAddPost}
         profileImageSource={LOGO_IMAGE}
       />
+
+
+
+{/*INTROSION RELATED*/}
+      {SHOW_INTRUSION_CALCULATOR && (
+        <IntrusionScorePopup
+          visible={isIntrusionPopupVisible}
+          onClose={() => setIsIntrusionPopupVisible(false)}
+          questions={intrusionQuestions as IntrusionQuestion[]}
+        />
+      )}
+
     </View>
   );
 }
@@ -281,5 +319,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#C44A93',
+  },
+
+  // INTROSION SCORE RELATED
+  intrusionButton: {
+    width: '100%',
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D85AAF',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+
+  intrusionButtonText: {
+    color: '#D85AAF',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
