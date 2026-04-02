@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
 
   backButtonText: {
     fontSize: 30,
-    color: '#4C2376',
+    color: '#8E1C62',
     fontWeight: '900',
   },
 
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
     textAlign: 'center',
     marginBottom: 52,
   },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B9B9B9',
   },
   activeDot: {
-    backgroundColor: '#7C57C8',
+    backgroundColor: '#8E1C62',
   },
   inputWrapper: {
     height: 40,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
 
   suggestButtonText: {
     fontSize: 11,
-    color: '#4C2376',
+    color: '#8E1C62',
     fontWeight: '600',
   },
 

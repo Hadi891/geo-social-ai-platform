@@ -79,21 +79,6 @@ export default function EditProfileSection({
       />
 
       <ProfileField
-        label="Birth Date"
-        value={values.birthDate}
-        onChangeText={(value) => onChangeField('birthDate', value)}
-        placeholder="MM/DD/YYYY"
-      />
-
-      <ProfileField
-        label="Email Address"
-        value={values.email}
-        onChangeText={(value) => onChangeField('email', value)}
-        placeholder="Enter email"
-        keyboardType="email-address"
-      />
-
-      <ProfileField
         label="Bio"
         value={values.bio}
         onChangeText={(value) => onChangeField('bio', value)}

@@ -122,13 +122,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '700',
-    color: '#44206B',
+    color: '#8E1C62',
     textAlign: 'center',
     marginBottom: 14,
   },
   subtitle: {
     fontSize: 17,
-    color: '#5A3B84',
+    color: '#8E1C62',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 34,
@@ -143,12 +143,12 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
   highlight: {
-    color: '#8F47C7',
+    color: '#8E1C62',
     fontWeight: '600',
   },
   button: {
     marginTop: 10,
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 999,
@@ -173,6 +173,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#BDBDBD',
   },
   activeDot: {
-    backgroundColor: '#7C57C8',
+    backgroundColor: '#8E1C62',
   },
 });

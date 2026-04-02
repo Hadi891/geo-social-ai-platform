@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 30,
-    color: '#4C2376',
+    color: '#8E1C62',
     fontWeight: '900',
   },
   content: {
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
     textAlign: 'center',
     marginBottom: 52,
   },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   signupButton: {
     alignSelf: 'center',
     marginTop: 10,
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 999,
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B9B9B9',
   },
   activeDot: {
-    backgroundColor: '#7C57C8',
+    backgroundColor: '#8E1C62',
   },
   modalOverlay: {
     flex: 1,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
     marginBottom: 14,
     textAlign: 'center',
   },
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   verifyButton: {
     alignSelf: 'center',
     marginTop: 4,
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 999,
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D3D3D3',
   },
   verifyButtonVerified: {
-    backgroundColor: '#7C57C8',
+    backgroundColor: '#8E1C62',
   },
   verifyButtonText: {
     color: '#FFFFFF',
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   modalVerifyButton: {
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 999,
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   },
   resendButtonText: {
     fontSize: 13,
-    color: '#D85BC7',
+    color: '#D3327C',
     fontWeight: '600',
   },
   resendButtonTextDisabled: {

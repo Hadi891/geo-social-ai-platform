@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 30,
-    color: '#4C2376',
+    color: '#8E1C62',
     fontWeight: '900',
   },
   content: {
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#44206B',
+    color: '#8E1C62',
     marginBottom: 30,
   },
   form: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#44206B',
+    color: '#8E1C62',
     fontWeight: '600',
     marginBottom: 8,
     marginLeft: 4,
@@ -267,13 +267,13 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   forgotPasswordText: {
-    color: '#D85BC7',
+    color: '#D3327C',
     fontSize: 13,
     fontWeight: '600',
   },
   button: {
     marginTop: 10,
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',

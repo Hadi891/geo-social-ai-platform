@@ -414,7 +414,7 @@ export default function SignupStep3Screen() {
           >
             <Text style={styles.optionText}>{option}</Text>
             {gender === option && (
-              <Ionicons name="checkmark" size={18} color="#7C57C8" />
+              <Ionicons name="checkmark" size={18} color="#8E1C62" />
             )}
           </Pressable>
         ))}
@@ -444,7 +444,7 @@ export default function SignupStep3Screen() {
           >
             <Text style={styles.optionText}>{option}</Text>
             {lookingFor === option && (
-              <Ionicons name="checkmark" size={18} color="#7C57C8" />
+              <Ionicons name="checkmark" size={18} color="#8E1C62" />
             )}
           </Pressable>
         ))}
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 30,
-    color: '#4C2376',
+    color: '#8E1C62',
     fontWeight: '900',
   },
   content: {
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
     textAlign: 'center',
     marginBottom: 52,
   },
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B9B9B9',
   },
   activeDot: {
-    backgroundColor: '#7C57C8',
+    backgroundColor: '#8E1C62',
   },
   modalOverlay: {
     flex: 1,
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
     marginBottom: 14,
     textAlign: 'center',
   },
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
   },
   modalDoneButton: {
     marginTop: 16,
-    backgroundColor: '#D85BC7',
+    backgroundColor: '#D3327C',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -793,13 +793,13 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#4C2376',
+    color: '#8E1C62',
   },
 
   sheetDoneText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#D85BC7',
+    color: '#D3327C',
   },
 
   sheetScrollContent: {
@@ -836,8 +836,8 @@ const styles = StyleSheet.create({
   },
 
   interestChipSelected: {
-    backgroundColor: '#D85BC7',
-    borderColor: '#D85BC7',
+    backgroundColor: '#D3327C',
+    borderColor: '#D3327C',
   },
 
   interestChipText: {
