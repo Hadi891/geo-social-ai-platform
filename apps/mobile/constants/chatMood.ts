@@ -73,8 +73,7 @@ neutral: {
       border: '#3A1A1A',
       inputBg: '#1A1A1C',
     },
-  },
-  neutral: {
+neutral: {
     background: '#0F0F10',
     bubbleUser: ['#555', '#777'],
     bubbleOther: '#1E1E1F',
@@ -83,4 +82,6 @@ neutral: {
     border: '#2A2A2C',
     inputBg: '#1A1A1C',
   },
+  },
+
 };
