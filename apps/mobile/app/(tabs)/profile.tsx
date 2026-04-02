@@ -20,7 +20,8 @@ import EditProfileSection from '@/components/profile/EditProfileSection';
 import LogoutButton from '@/components/profile/LogoutButton';
 import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
-import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation } from '@repo/api';
+import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation, getPosts, likePost, unlikePost, type Post } from '@repo/api';
+import PostCard from '@/components/home/PostCard';
 
 type UserProfile = {
   id: string;
@@ -103,7 +104,24 @@ export default function ProfileScreen() {
         textAlign: 'center',
         paddingHorizontal: 24,
       },
+      postsSection: {
+        marginTop: 20,
+      },
+      postsSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 10,
+      },
+      noPostsText: {
+        fontSize: 14,
+        color: colors.subText,
+        textAlign: 'center',
+        paddingVertical: 20,
+      },
     });
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editableProfile, setEditableProfile] = useState<EditableProfileFields>({
     firstName: '',
@@ -122,6 +140,7 @@ export default function ProfileScreen() {
         getMyProfile(token),
         getMyLocation(token).catch(() => null),
       ]);
+      const postsRes = await getPosts(token, { limit: 50, author_id: data.id }).catch(() => ({ posts: [] as Post[] }));
 
       let locationLabel = '';
       if (locationData) {
@@ -155,6 +174,7 @@ export default function ProfileScreen() {
         matches: 0,
       };
       setProfile(loaded);
+      setMyPosts(postsRes.posts);
       setEditableProfile({
         firstName: loaded.firstName,
         lastName: loaded.lastName,
@@ -282,6 +302,30 @@ export default function ProfileScreen() {
     setShowEditSection(false);
   };
 
+  const handleLike = async (post: Post) => {
+    const wasLiked = post.liked_by_me;
+    setMyPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id
+          ? { ...p, liked_by_me: !wasLiked, like_count: wasLiked ? p.like_count - 1 : p.like_count + 1 }
+          : p
+      )
+    );
+    try {
+      const token = await getToken();
+      if (wasLiked) await unlikePost(token, post.id);
+      else await likePost(token, post.id);
+    } catch {
+      setMyPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, liked_by_me: wasLiked, like_count: wasLiked ? p.like_count + 1 : p.like_count - 1 }
+            : p
+        )
+      );
+    }
+  };
+
   const handleLogout = () => {
     doSignOut();
     router.replace('/');
@@ -333,6 +377,30 @@ export default function ProfileScreen() {
         />
 
         <InterestChips interests={profile.interests} />
+
+        {/* My Posts */}
+        <View style={styles.postsSection}>
+          <Text style={styles.postsSectionTitle}>My Posts</Text>
+          {myPosts.length === 0 ? (
+            <Text style={styles.noPostsText}>No posts yet.</Text>
+          ) : (
+            myPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                profileImageUri={post.author.profile_photo_url}
+                name={post.author.name ?? 'You'}
+                age={post.author.age}
+                postImageUri={post.media_url}
+                caption={post.content ?? ''}
+                tags={post.tags}
+                likeCount={post.like_count}
+                commentCount={post.comment_count}
+                likedByMe={post.liked_by_me}
+                onLike={() => handleLike(post)}
+              />
+            ))
+          )}
+        </View>
 
         {showEditSection && (
           <View onLayout={handleEditSectionLayout}>

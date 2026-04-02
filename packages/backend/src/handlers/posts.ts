@@ -78,6 +78,7 @@ export async function handleGetPosts(event: APIGatewayProxyEvent) {
     Math.max(parseInt(params["radius"] ?? "0", 10) || DEFAULT_RADIUS_M, 1),
     MAX_RADIUS_M
   );
+  const authorFilter: string | null = params["author_id"] ?? null;
 
   try {
     const meResult = await db.query(
@@ -93,8 +94,8 @@ export async function handleGetPosts(event: APIGatewayProxyEvent) {
 
     logInfo("/posts", { userId, limit, offset, radius });
 
-    // If user has location, filter posts by distance; otherwise return all posts
-    const hasLocation = !!me.geom;
+    // If filtering by author, skip distance entirely; otherwise use location if available
+    const useLocation = !!me.geom && !authorFilter;
 
     const result = await db.query(
       `SELECT
@@ -116,25 +117,26 @@ export async function handleGetPosts(event: APIGatewayProxyEvent) {
            SELECT 1 FROM post_likes
            WHERE post_id = p.id AND user_id = $1
          ) AS liked_by_me
-         ${hasLocation ? `, ROUND(ST_Distance(al.geom, me.geom)::numeric) AS distance_m` : `, NULL::numeric AS distance_m`}
+         ${useLocation ? `, ROUND(ST_Distance(al.geom, me.geom)::numeric) AS distance_m` : `, NULL::numeric AS distance_m`}
        FROM posts p
        JOIN users u ON u.id = p.author_id
        LEFT JOIN photos ph ON ph.user_id = u.id AND ph.is_profile_photo = TRUE
        LEFT JOIN post_likes pl ON pl.post_id = p.id
        LEFT JOIN post_comments pc ON pc.post_id = p.id
-       ${hasLocation ? `
+       ${useLocation ? `
        LEFT JOIN locations al ON al.user_id = u.id
        CROSS JOIN (
          SELECT l.geom FROM locations l WHERE l.user_id = $1
        ) me
        ` : ""}
        WHERE (p.expires_at IS NULL OR p.expires_at > NOW())
-       ${hasLocation ? `AND (al.geom IS NULL OR ST_DWithin(al.geom, me.geom, $4))` : ""}
+       ${useLocation ? `AND (al.geom IS NULL OR ST_DWithin(al.geom, me.geom, $4))` : ""}
+       ${authorFilter ? `AND p.author_id = $4` : ""}
        GROUP BY p.id, u.id, u.name, u.age, ph.image_url
-         ${hasLocation ? `, al.geom, me.geom` : ""}
+         ${useLocation ? `, al.geom, me.geom` : ""}
        ORDER BY p.created_at DESC
        LIMIT $2 OFFSET $3`,
-      hasLocation ? [userId, limit, offset, radius] : [userId, limit, offset]
+      authorFilter ? [userId, limit, offset, authorFilter] : useLocation ? [userId, limit, offset, radius] : [userId, limit, offset]
     );
 
     // Generate presigned URLs for media and author profile photos

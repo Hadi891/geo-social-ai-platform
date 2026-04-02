@@ -170,12 +170,13 @@ export type PostsResponse = {
 
 export async function getPosts(
   token: string,
-  opts: { limit?: number; offset?: number; radius?: number } = {}
+  opts: { limit?: number; offset?: number; radius?: number; author_id?: string } = {}
 ): Promise<PostsResponse> {
   const params = new URLSearchParams();
   if (opts.limit) params.set("limit", String(opts.limit));
   if (opts.offset) params.set("offset", String(opts.offset));
   if (opts.radius) params.set("radius", String(opts.radius));
+  if (opts.author_id) params.set("author_id", opts.author_id);
   const qs = params.toString();
   const res = await apiFetch(token, `/posts${qs ? `?${qs}` : ""}`, { method: "GET" });
   const body = await res.json().catch(() => ({})) as Record<string, any>;
