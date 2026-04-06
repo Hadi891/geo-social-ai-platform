@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ActivityIndicator, 
-  TouchableOpacity, 
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
   ScrollView,
   Pressable,
-  Text 
+  Text,
+  Image,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -27,9 +28,9 @@ const pinkMapStyle = [
 ];
 
 const MAP_FILTERS = [
-  { id: '1', icon: 'pin-outline' as const, label: 'Within 5km' },
-  { id: '2', icon: 'calendar-clear-outline' as const, label: 'All Ages' },
-  { id: '3', icon: 'options-outline' as const, label: 'Interests' },
+  { id: '1', icon: 'pin-outline', label: 'Within 5km' },
+  { id: '2', icon: 'calendar-clear-outline', label: 'All Ages' },
+  { id: '3', icon: 'options-outline', label: 'Interests' },
 ];
 
 const FILTER_OPTIONS: Record<string, string[]> = {
@@ -48,7 +49,8 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([]);
-  
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     'Within 5km': [],
     'All Ages': [],
@@ -64,14 +66,39 @@ export default function MapScreen() {
         setErrorMsg('Permission denied');
         return;
       }
+
       let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setLocation(loc);
 
-      // Simulation des données SQL
+      // Mock users near you
       const mockUsers = [
-        { id: 'u1', latitude: loc.coords.latitude + 0.002, longitude: loc.coords.longitude + 0.002, avatarSource: LOGO_IMAGE },
-        { id: 'u2', latitude: loc.coords.latitude - 0.003, longitude: loc.coords.longitude + 0.004, avatarSource: LOGO_IMAGE },
-        { id: 'u3', latitude: loc.coords.latitude + 0.005, longitude: loc.coords.longitude - 0.002, avatarSource: LOGO_IMAGE },
+        { 
+          id: 'u1', 
+          name: 'Jessica', 
+          age: 23,
+          latitude: loc.coords.latitude + 0.002, 
+          longitude: loc.coords.longitude + 0.002, 
+          avatarSource: LOGO_IMAGE,
+          distance: '0.4 miles away'
+        },
+        { 
+          id: 'u2', 
+          name: 'David', 
+          age: 27,
+          latitude: loc.coords.latitude - 0.003, 
+          longitude: loc.coords.longitude + 0.004, 
+          avatarSource: LOGO_IMAGE,
+          distance: '0.8 miles away'
+        },
+        { 
+          id: 'u3', 
+          name: 'Sophie', 
+          age: 25,
+          latitude: loc.coords.latitude + 0.005, 
+          longitude: loc.coords.longitude - 0.002, 
+          avatarSource: LOGO_IMAGE,
+          distance: '1.1 miles away'
+        },
       ];
       setNearbyUsers(mockUsers);
     })();
@@ -83,6 +110,7 @@ export default function MapScreen() {
       const currentSelections = prev[activeFilter];
       if (option === null) return { ...prev, [activeFilter]: [] };
       if (activeFilter === 'Within 5km') return { ...prev, [activeFilter]: [option] };
+      
       const isAlreadySelected = currentSelections.includes(option);
       const newSelections = isAlreadySelected
         ? currentSelections.filter(item => item !== option)
@@ -102,16 +130,31 @@ export default function MapScreen() {
     }
   };
 
+  const centerOnUser = (user: any) => {
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: user.latitude,
+        longitude: user.longitude,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.015,
+      }, 800);
+    }
+  };
+
+  const handleMarkerPress = (user: any) => {
+    setSelectedUser(user);
+    centerOnUser(user);
+  };
+
   return (
     <View style={styles.container}>
       <TopBar title="Mingle Map" />
+
       <View style={styles.mapArea}>
         {location ? (
           <>
             <MapView
               ref={mapRef}
-              // La clé change quand les utilisateurs arrivent, forçant le rafraîchissement
-              key={`map-loaded-${nearbyUsers.length > 0}`}
               style={StyleSheet.absoluteFillObject}
               provider={PROVIDER_GOOGLE}
               customMapStyle={pinkMapStyle}
@@ -121,40 +164,50 @@ export default function MapScreen() {
                 latitudeDelta: 0.015,
                 longitudeDelta: 0.015,
               }}
+              onPress={() => setSelectedUser(null)}
             >
-              {/* MON MARQUEUR PERSO */}
-              <Marker 
-                coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }} 
-                anchor={{ x: 0.5, y: 0.5 }} 
+
+              <Marker
+                coordinate={{ 
+                  latitude: location.coords.latitude, 
+                  longitude: location.coords.longitude 
+                }}
+                anchor={{ x: 0.5, y: 0.5 }}
                 zIndex={10}
               >
-                <View style={styles.pulseContainer}>
-                  <View style={styles.pulseRingOuter} />
-                  <View style={styles.pulseRingInner} />
-                  <View style={styles.pulseCenter} />
+               
+                <View style={styles.cssDotOuter}>
+                  <View style={styles.cssDotInner} />
                 </View>
               </Marker>
 
-              {/* MARQUEURS DES AUTRES */}
+              {/* Nearby Users */}
               {nearbyUsers.map((user) => (
-                <UserMarker key={user.id} user={user} />
+                <UserMarker 
+                  key={user.id} 
+                  user={user} 
+                  onPress={() => handleMarkerPress(user)}
+                />
               ))}
             </MapView>
 
+            {/* Filters */}
             <View style={styles.filterOverlayContainer}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
                 {MAP_FILTERS.map((filter) => {
                   const selections = selectedFilters[filter.label];
                   const isSelected = selections.length > 0;
                   return (
-                    <Pressable 
-                      key={filter.id} 
+                    <Pressable
+                      key={filter.id}
                       style={[styles.pill, isSelected && styles.pillSelected]}
                       onPress={() => setActiveFilter(filter.label)}
                     >
-                      <Ionicons name={filter.icon} size={16} color={isSelected ? "#FFFFFF" : "#2F2632"} />
+                      <Ionicons name={filter.icon as any} size={16} color={isSelected ? "#FFFFFF" : "#2F2632"} />
                       <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
-                        {isSelected ? `${selections[0]}${selections.length > 1 ? ` +${selections.length - 1}` : ''}` : filter.label}
+                        {isSelected 
+                          ? `${selections[0]}${selections.length > 1 ? ` +${selections.length - 1}` : ''}` 
+                          : filter.label}
                       </Text>
                       <Ionicons name="chevron-down" size={14} color={isSelected ? "#FFFFFF" : "#8E8291"} style={{ marginLeft: 4 }} />
                     </Pressable>
@@ -163,16 +216,51 @@ export default function MapScreen() {
               </ScrollView>
             </View>
 
+            {/* Go to my location button */}
             <TouchableOpacity style={styles.locationButton} onPress={goToMyLocation}>
               <Ionicons name="navigate" size={24} color="#C44A93" />
             </TouchableOpacity>
+
+            {/* Selected User Info Card */}
+            {selectedUser && (
+              <View style={styles.userInfoCard}>
+                <TouchableOpacity 
+                  style={styles.closeButton} 
+                  onPress={() => setSelectedUser(null)}
+                >
+                  <Ionicons name="close" size={20} color="#fff" />
+                </TouchableOpacity>
+
+                <View style={styles.cardContent}>
+                  <Image 
+                    source={selectedUser.avatarSource} 
+                    style={styles.cardAvatar} 
+                  />
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardName}>
+                      {selectedUser.name}, {selectedUser.age}
+                    </Text>
+                    <Text style={styles.cardDistance}>
+                      {selectedUser.distance}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.messageButton}>
+                  <Text style={styles.messageButtonText}>Message</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         ) : (
-          <View style={styles.loader}><ActivityIndicator size="large" color="#C44A93" /></View>
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color="#C44A93" />
+          </View>
         )}
 
         <MapBottomSheet users={suggestedUsers} />
-        <FilterModal 
+        
+        <FilterModal
           isVisible={!!activeFilter}
           onClose={() => setActiveFilter(null)}
           title={activeFilter || ""}
@@ -188,16 +276,158 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FCF9FC' },
   mapArea: { flex: 1 },
+
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  filterOverlayContainer: { position: 'absolute', top: 15, left: 0, right: 0, zIndex: 10 },
-  pillRow: { flexDirection: 'row', paddingHorizontal: 15, paddingVertical: 5, gap: 10 },
-  pill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: '#EFE7EC', elevation: 3 },
-  pillSelected: { backgroundColor: '#C44A93', borderColor: '#C44A93' },
-  pillText: { marginLeft: 6, fontSize: 14, fontWeight: '700', color: '#2F2632' },
+
+  filterOverlayContainer: { 
+    position: 'absolute', 
+    top: 15, 
+    left: 0, 
+    right: 0, 
+    zIndex: 10 
+  },
+  pillRow: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 15, 
+    paddingVertical: 5, 
+    gap: 10 
+  },
+  pill: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    paddingVertical: 10, 
+    paddingHorizontal: 15, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: '#EFE7EC', 
+    elevation: 3 
+  },
+  pillSelected: { 
+    backgroundColor: '#C44A93', 
+    borderColor: '#C44A93' 
+  },
+  pillText: { 
+    marginLeft: 6, 
+    fontSize: 14, 
+    fontWeight: '700', 
+    color: '#2F2632' 
+  },
   pillTextSelected: { color: '#FFFFFF' },
-  locationButton: { position: 'absolute', right: 20, bottom: 310, backgroundColor: 'white', width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', elevation: 8, zIndex: 20 },
-  pulseContainer: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
-  pulseCenter: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#C44A93', borderWidth: 2, borderColor: 'white', position: 'absolute', zIndex: 3 },
-  pulseRingInner: { width: 35, height: 35, borderRadius: 17.5, backgroundColor: 'rgba(196, 74, 147, 0.25)', position: 'absolute', zIndex: 2 },
-  pulseRingOuter: { width: 55, height: 55, borderRadius: 27.5, backgroundColor: 'rgba(196, 74, 147, 0.12)', position: 'absolute', zIndex: 1 },
+
+  locationButton: { 
+    position: 'absolute', 
+    right: 20, 
+    bottom: 310, 
+    backgroundColor: 'white', 
+    width: 52, 
+    height: 52, 
+    borderRadius: 26, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    elevation: 8, 
+    zIndex: 20 
+  },
+
+
+  imageDotContainer: { 
+    width: 36, 
+    height: 36, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  imageDot: { 
+    width: 20, 
+    height: 20 
+  },
+
+  cssDotOuter: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    backgroundColor: 'rgba(196, 74, 147, 0.25)', // Halo translucide
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  cssDotInner: { 
+    width: 16, 
+    height: 16, 
+    borderRadius: 8, 
+    backgroundColor: '#C44A93', 
+    borderWidth: 2, 
+    borderColor: '#FFFFFF', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5, 
+  },
+
+ 
+
+  userInfoCard: {
+    position: 'absolute',
+    bottom: 180,
+    left: 20,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    paddingTop: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 30,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 31,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  cardAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginRight: 14,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2F2632',
+  },
+  cardDistance: {
+    fontSize: 14,
+    color: '#8E8291',
+    marginTop: 2,
+  },
+  messageButton: {
+    backgroundColor: '#C44A93',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    marginLeft: 10,
+  },
+  messageButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
 });
