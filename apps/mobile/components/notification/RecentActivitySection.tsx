@@ -5,16 +5,17 @@ import { NotificationActivity } from './types';
 
 type Props = {
   items: NotificationActivity[];
+  onItemPress?: (item: NotificationActivity) => void;
 };
 
-export default function RecentActivitySection({ items }: Props) {
+export default function RecentActivitySection({ items, onItemPress }: Props) {
   return (
     <View style={styles.section}>
       <Text style={styles.title}>Recent Activity</Text>
 
       <View style={styles.list}>
         {items.map((item) => (
-          <ActivityNotificationCard key={item.id} item={item} />
+          <ActivityNotificationCard key={item.id} item={item} onPress={onItemPress} />
         ))}
       </View>
     </View>

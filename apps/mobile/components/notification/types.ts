@@ -6,17 +6,16 @@ name: string;
 avatar: ImageSourcePropType;
 };
 
-export type NotificationType = 'like' | 'match' | 'message';
+export type NotificationType = 'like' | 'match' | 'comment';
 export type LikeTarget = 'profile' | 'post';
-export type MessageTarget = 'direct' | 'comment';
+
 
 export type NotificationActivity = {
 id: string;
 type: NotificationType;
 name: string;
-message?: string;
+comment?: string;
 likeTarget?: LikeTarget;
-messageTarget?: MessageTarget;
-createdAt: string; // DD/MM/YYYY hh:mm
+createdAt: string;
 avatar: ImageSourcePropType;
 };

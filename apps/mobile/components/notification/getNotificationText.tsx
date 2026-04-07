@@ -12,24 +12,14 @@ export function getNotificationText(item: NotificationActivity) {
     );
   }
 
-  if (item.type === 'message') {
-    if (item.messageTarget === 'comment') {
+  if (item.type === 'comment') {
       return (
         <Text>
           <Text style={{ fontWeight: '700' }}>{item.name} </Text>
           {'commented on your post: '}
-          <Text style={{ fontWeight: '700' }}>{`"${item.message ?? ''}"`}</Text>
+          <Text style={{ fontWeight: '700' }}>{`"${item.comment ?? ''}"`}</Text>
         </Text>
       );
-    }
-
-    return (
-      <Text>
-        <Text style={{ fontWeight: '700' }}>{item.name} </Text>
-        {'sent you a message: '}
-        <Text style={{ fontWeight: '700' }}>{`"${item.message ?? ''}"`}</Text>
-      </Text>
-    );
   }
 
   if (item.type === 'like') {

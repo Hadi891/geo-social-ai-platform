@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationActivity } from './types';
 import { formatNotificationTime } from './formatNotificationTime';
@@ -7,9 +7,10 @@ import { getNotificationText } from './getNotificationText';
 
 type Props = {
   item: NotificationActivity;
+  onPress?: (item: NotificationActivity) => void;
 };
 
-export default function ActivityNotificationCard({ item }: Props) {
+export default function ActivityNotificationCard({ item, onPress }: Props) {
   const badgeIcon =
     item.type === 'like'
       ? 'heart'
@@ -17,8 +18,17 @@ export default function ActivityNotificationCard({ item }: Props) {
       ? 'sparkles'
       : 'chatbubble';
 
+  const isProfileLike = item.type === 'like' && item.likeTarget === 'profile';
+
   return (
-    <View style={styles.card}>
+    <Pressable
+      disabled={!isProfileLike}
+      onPress={isProfileLike ? () => onPress?.(item) : undefined}
+      style={({ pressed }) => [
+        styles.card,
+        isProfileLike && pressed && styles.cardPressed,
+      ]}
+    >
       <View style={styles.avatarWrapper}>
         <Image source={item.avatar} style={styles.avatar} />
         <View
@@ -34,15 +44,12 @@ export default function ActivityNotificationCard({ item }: Props) {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.message}>
-          {getNotificationText(item)}
-        </Text>
-
+        <Text style={styles.message}>{getNotificationText(item)}</Text>
         <Text style={styles.time}>{formatNotificationTime(item.createdAt)}</Text>
       </View>
 
       <View style={styles.dot} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -56,6 +63,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  cardPressed: {
+    opacity: 0.8,
   },
   avatarWrapper: {
     marginRight: 12,
