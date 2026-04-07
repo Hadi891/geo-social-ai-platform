@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, Pressable,
-  StyleSheet, KeyboardAvoidingView, Image, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Image,
   Animated, Modal, ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,8 @@ import {
   deleteChatMessage,
   postTypingIndicator,
   getTypingIndicator,
+  getConversationState,
+  getAiSuggestions,
   type ChatMessage as APIChatMessage,
 } from '@repo/api';
 
@@ -39,14 +41,9 @@ type Message = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Postgres returns timestamps without Z — force UTC interpretation
 const parseUtc = (iso: string) => new Date(iso.endsWith('Z') ? iso : iso + 'Z');
-
-const fmt = (iso: string) =>
-  parseUtc(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-const getTime = () =>
-  new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const fmt      = (iso: string) => parseUtc(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const getTime  = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 function toLocalMessage(m: APIChatMessage, myId: string): Message {
   return {
@@ -72,14 +69,22 @@ function getBubbleStyle(mood: ChatMood, isMe: boolean) {
       ? { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 5 }
       : { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 5,  borderBottomRightRadius: 20 };
   }
-  // stalled
   return isMe
     ? { borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 10, borderBottomRightRadius: 2 }
     : { borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 2,  borderBottomRightRadius: 10 };
 }
 
-const getInputRadius  = (mood: ChatMood) => mood === 'discovery' ? 24 : mood === 'stalled' ? 8  : 18;
-const getSendRadius   = (mood: ChatMood) => mood === 'stalled'   ? 10 : 19;
+const getInputRadius = (mood: ChatMood) => mood === 'discovery' ? 24 : mood === 'stalled' ? 8 : 18;
+const getSendRadius  = (mood: ChatMood) => mood === 'stalled' ? 10 : 19;
+
+// ── Mood indicator pill (replaces tab bar) ────────────────────────────────────
+
+const MOOD_LABELS: Record<ChatMood, string> = {
+  neutral:   '',
+  discovery: '💫 Discovery',
+  flow:      '🔥 Flow',
+  stalled:   '💤 Stalled',
+};
 
 // ── Discovery top banner ──────────────────────────────────────────────────────
 
@@ -101,9 +106,9 @@ const dBanner = StyleSheet.create({
   subtitle: { fontSize: 12, color: '#A0826D', lineHeight: 17 },
 });
 
-// ── Stalled nudge (pinned above chips) ────────────────────────────────────────
+// ── Stalled nudge ─────────────────────────────────────────────────────────────
 
-function StalledNudge({ accent, bgColor }: { accent: string; bgColor: string }) {
+function StalledNudge({ accent, bgColor, onAiPress }: { accent: string; bgColor: string; onAiPress: () => void }) {
   return (
     <View style={[sNudge.card, { backgroundColor: bgColor, borderTopColor: accent + '40' }]}>
       <Text style={sNudge.emoji}>💤</Text>
@@ -111,8 +116,8 @@ function StalledNudge({ accent, bgColor }: { accent: string; bgColor: string }) 
         <Text style={[sNudge.title, { color: accent }]}>This chat has gone quiet</Text>
         <Text style={sNudge.sub}>A small nudge can go a long way.</Text>
       </View>
-      <Pressable style={[sNudge.cta, { borderColor: accent }]}>
-        <Text style={[sNudge.ctaText, { color: accent }]}>AI boost</Text>
+      <Pressable style={[sNudge.cta, { borderColor: accent }]} onPress={onAiPress}>
+        <Text style={[sNudge.ctaText, { color: accent }]}>✨ AI boost</Text>
       </Pressable>
     </View>
   );
@@ -122,87 +127,74 @@ const sNudge = StyleSheet.create({
   emoji:   { fontSize: 20 },
   title:   { fontSize: 12, fontWeight: '700' },
   sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  cta:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1.5, marginLeft: 'auto' },
+  cta:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1.5 },
   ctaText: { fontSize: 11, fontWeight: '700' },
 });
 
-// ── Mood tabs ─────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const MOOD_TABS: { key: ChatMood; label: string }[] = [
-  { key: 'discovery', label: 'Discovery' },
-  { key: 'flow',      label: 'Flow'      },
-  { key: 'stalled',   label: 'Stalled'   },
-];
+const POLL_MESSAGES_MS    = 4000;
+const POLL_TYPING_MS      = 2500;
+const POLL_STATE_MS       = 30000; // re-check conversation state every 30s
+const TYPING_TTL_MS       = 3000;
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-const POLL_MESSAGES_MS = 4000;
-const POLL_TYPING_MS   = 2500;
-const TYPING_TTL_MS    = 3000; // re-send typing heartbeat every 3s
-
 export default function ConversationScreen() {
-  const insets   = useSafeAreaInsets();
+  const insets       = useSafeAreaInsets();
   const { getToken } = useAuth();
-  const params   = useLocalSearchParams<{ name: string; match_id: string }>();
-  const matchId  = params.match_id || '';
-  const hasMatch = matchId.length > 0;
+  const params       = useLocalSearchParams<{ name: string; match_id: string }>();
+  const matchId      = params.match_id || '';
+  const hasMatch     = matchId.length > 0;
 
-  // ── Mood ───────────────────────────────────────────────────────────────────
+  // ── Mood (set by conversationState API, not manually) ─────────────────────
   const [mood, setMood] = useState<ChatMood>('neutral');
   const colors = useChatMood(mood);
   const meta   = ChatMoodMeta[mood];
 
-  // Pre-compute tab accent colors (hooks must not be inside loops)
-  const discColors = useChatMood('discovery');
-  const flowColors = useChatMood('flow');
-  const stalColors = useChatMood('stalled');
-  const TAB_ACCENT: Record<string, string> = {
-    discovery: discColors.accent,
-    flow:      flowColors.accent,
-    stalled:   stalColors.accent,
-  };
-
-  // ── Data ───────────────────────────────────────────────────────────────────
-  const [, setMyUserId]   = useState<string | null>(null);
+  // ── Data ──────────────────────────────────────────────────────────────────
   const [messages,      setMessages]      = useState<Message[]>([]);
   const [loading,       setLoading]       = useState(hasMatch);
-  const [initDone,      setInitDone]      = useState(!hasMatch); // true immediately when no match_id
+  const [initDone,      setInitDone]      = useState(!hasMatch);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [input,         setInput]         = useState('');
 
-  // ── Edit / action state ────────────────────────────────────────────────────
-  const [editingId,    setEditingId]    = useState<string | null>(null);
-  const [actionMsg,    setActionMsg]    = useState<Message | null>(null); // long-press target
+  // ── Edit / action state ───────────────────────────────────────────────────
+  const [editingId,     setEditingId]     = useState<string | null>(null);
+  const [actionMsg,     setActionMsg]     = useState<Message | null>(null);
   const [actionVisible, setActionVisible] = useState(false);
 
-  // ── Refs ───────────────────────────────────────────────────────────────────
-  const flatListRef       = useRef<FlatList>(null);
-  const pollRef           = useRef<ReturnType<typeof setInterval> | null>(null);
-  const typingPollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const typingHeartbeat   = useRef<ReturnType<typeof setTimeout>  | null>(null);
-  const tokenRef          = useRef<string>('');
-  const myUserIdRef       = useRef<string>('');
-  const lastMessageIdRef  = useRef<string>('');
+  // ── AI suggestions state ──────────────────────────────────────────────────
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [suggestions,        setSuggestions]        = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
-  // ── Animations ─────────────────────────────────────────────────────────────
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const flatListRef      = useRef<FlatList>(null);
+  const pollRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingPollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statePollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingHeartbeat  = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const tokenRef         = useRef<string>('');
+  const myUserIdRef      = useRef<string>('');
+  const lastMessageIdRef = useRef<string>('');
+
+  // ── Animations ────────────────────────────────────────────────────────────
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const sendScale      = useRef(new Animated.Value(1)).current;
 
-  // ── Mood switch ────────────────────────────────────────────────────────────
-  const switchMood = (newMood: ChatMood) => {
-    if (newMood === mood) return;
-    setMood(newMood);
+  const animateMoodSwitch = () => {
     Animated.sequence([
       Animated.timing(contentOpacity, { toValue: 0.15, duration: 100, useNativeDriver: true }),
       Animated.timing(contentOpacity, { toValue: 1,    duration: 220, useNativeDriver: true }),
     ]).start();
     Animated.sequence([
-      Animated.timing(sendScale, { toValue: 1.35, duration: 100, useNativeDriver: true }),
+      Animated.timing(sendScale, { toValue: 1.3, duration: 100, useNativeDriver: true }),
       Animated.spring(sendScale,  { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
     ]).start();
   };
 
-  // ── Load messages ──────────────────────────────────────────────────────────
+  // ── Load messages ─────────────────────────────────────────────────────────
   const loadMessages = useCallback(async () => {
     if (!hasMatch || !tokenRef.current || !myUserIdRef.current) return;
     try {
@@ -210,26 +202,34 @@ export default function ConversationScreen() {
       const mapped = raw.map(m => toLocalMessage(m, myUserIdRef.current));
       setMessages(mapped);
       if (raw.length > 0) lastMessageIdRef.current = raw[raw.length - 1].id;
-    } catch {
-      // silently ignore polling errors
-    }
+    } catch { /* ignore polling errors */ }
   }, [matchId, hasMatch]);
 
-  // ── Poll typing ────────────────────────────────────────────────────────────
+  // ── Fetch conversation state ──────────────────────────────────────────────
+  const fetchConversationState = useCallback(async () => {
+    if (!hasMatch || !tokenRef.current) return;
+    try {
+      const { mode } = await getConversationState(tokenRef.current, matchId);
+      const newMood = mode as ChatMood;
+      setMood(prev => {
+        if (prev !== newMood) animateMoodSwitch();
+        return newMood;
+      });
+    } catch { /* non-critical */ }
+  }, [matchId, hasMatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Poll typing ───────────────────────────────────────────────────────────
   const pollTyping = useCallback(async () => {
     if (!hasMatch || !tokenRef.current || !myUserIdRef.current) return;
     try {
       const { typing_user_ids } = await getTypingIndicator(tokenRef.current, matchId);
       setIsOtherTyping(typing_user_ids.length > 0);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [matchId, hasMatch]);
 
-  // ── Init ───────────────────────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!hasMatch) return;
-
     let cancelled = false;
 
     (async () => {
@@ -241,27 +241,33 @@ export default function ConversationScreen() {
         const profile = await getMyProfile(token);
         if (cancelled) return;
         myUserIdRef.current = profile.id;
-        setMyUserId(profile.id);
 
-        // Initial load
-        const { messages: raw } = await getMessages(token, matchId, { limit: 50 });
+        // Load messages + conversation state in parallel
+        const [msgRes] = await Promise.all([
+          getMessages(token, matchId, { limit: 50 }),
+          getConversationState(token, matchId).then(({ mode }) => {
+            if (!cancelled) setMood(mode as ChatMood);
+          }).catch(() => {}),
+        ]);
         if (cancelled) return;
-        setMessages(raw.map(m => toLocalMessage(m, profile.id)));
-        if (raw.length > 0) lastMessageIdRef.current = raw[raw.length - 1].id;
 
-        // Mark read
+        setMessages(msgRes.messages.map(m => toLocalMessage(m, profile.id)));
+        if (msgRes.messages.length > 0) {
+          lastMessageIdRef.current = msgRes.messages[msgRes.messages.length - 1].id;
+        }
+
         markChatRead(token, matchId).catch(() => {});
-
         setLoading(false);
         setInitDone(true);
 
         // Start polling
-        pollRef.current       = setInterval(loadMessages,  POLL_MESSAGES_MS);
-        typingPollRef.current = setInterval(pollTyping,    POLL_TYPING_MS);
+        pollRef.current      = setInterval(loadMessages,            POLL_MESSAGES_MS);
+        typingPollRef.current = setInterval(pollTyping,             POLL_TYPING_MS);
+        statePollRef.current  = setInterval(fetchConversationState, POLL_STATE_MS);
       } catch (err: any) {
         if (!cancelled) {
           setLoading(false);
-          setInitDone(true); // still allow typing even if initial load fails
+          setInitDone(true);
           Alert.alert('Connection error', err?.message ?? 'Could not load messages.');
         }
       }
@@ -271,72 +277,84 @@ export default function ConversationScreen() {
       cancelled = true;
       if (pollRef.current)       clearInterval(pollRef.current);
       if (typingPollRef.current) clearInterval(typingPollRef.current);
+      if (statePollRef.current)  clearInterval(statePollRef.current);
       if (typingHeartbeat.current) clearTimeout(typingHeartbeat.current);
     };
   }, [matchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom on new messages
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     }
   }, [messages.length]);
 
-  // ── Typing heartbeat ───────────────────────────────────────────────────────
+  // ── Typing heartbeat ──────────────────────────────────────────────────────
   const handleInputChange = (text: string) => {
     setInput(text);
     if (!hasMatch || !tokenRef.current) return;
-    if (typingHeartbeat.current) return; // already scheduled
+    if (typingHeartbeat.current) return;
     postTypingIndicator(tokenRef.current, matchId);
-    typingHeartbeat.current = setTimeout(() => {
-      typingHeartbeat.current = null;
-    }, TYPING_TTL_MS);
+    typingHeartbeat.current = setTimeout(() => { typingHeartbeat.current = null; }, TYPING_TTL_MS);
   };
 
-  // ── Send ───────────────────────────────────────────────────────────────────
+  // ── Send ──────────────────────────────────────────────────────────────────
   const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // If editing an existing message
     if (editingId) {
       setInput('');
       setEditingId(null);
-      // Optimistic update
-      setMessages(prev => prev.map(m =>
-        m.id === editingId ? { ...m, text, isEdited: true } : m
-      ));
+      setMessages(prev => prev.map(m => m.id === editingId ? { ...m, text, isEdited: true } : m));
       try {
         await editChatMessage(tokenRef.current, editingId, text);
       } catch {
-        Alert.alert('Edit failed', 'Could not edit the message. Please try again.');
-        loadMessages(); // revert
+        Alert.alert('Edit failed', 'Could not edit the message.');
+        loadMessages();
       }
       return;
     }
 
     setInput('');
-
     if (!hasMatch || !initDone) return;
 
-    // Optimistic: add a temp message
     const tempId = `tmp-${Date.now()}`;
-    const optimistic: Message = { id: tempId, text, sender: 'me', time: getTime() };
-    setMessages(prev => [...prev.filter(m => !m.isTyping), optimistic]);
+    setMessages(prev => [...prev.filter(m => !m.isTyping), { id: tempId, text, sender: 'me', time: getTime() }]);
 
     try {
       const sent = await sendChatMessage(tokenRef.current, matchId, text);
-      // Replace temp with real
       setMessages(prev => prev.map(m => m.id === tempId ? toLocalMessage(sent, myUserIdRef.current) : m));
       markChatRead(tokenRef.current, matchId).catch(() => {});
     } catch (err: any) {
-      // Remove temp on failure
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      Alert.alert('Send failed', err?.message ?? 'Could not send the message. Please try again.');
+      Alert.alert('Send failed', err?.message ?? 'Could not send the message.');
     }
   };
 
-  // ── Long press → action sheet ──────────────────────────────────────────────
+  // ── AI Suggestions ────────────────────────────────────────────────────────
+  const handleOpenSuggestions = async () => {
+    setSuggestionsVisible(true);
+    setSuggestionsLoading(true);
+    setSuggestions([]);
+    try {
+      const contextType = messages.length === 0 ? 'initial' : 'chat';
+      const { suggestions: s } = await getAiSuggestions(tokenRef.current, matchId, contextType);
+      setSuggestions(s);
+    } catch (err: any) {
+      Alert.alert('Suggestions failed', err?.message ?? 'Could not load suggestions.');
+      setSuggestionsVisible(false);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const handlePickSuggestion = (s: string) => {
+    setInput(s);
+    setSuggestionsVisible(false);
+  };
+
+  // ── Long press → edit / delete ────────────────────────────────────────────
   const handleLongPress = (msg: Message) => {
     if (msg.sender !== 'me' || msg.isDeleted) return;
     setActionMsg(msg);
@@ -354,28 +372,24 @@ export default function ConversationScreen() {
     if (!actionMsg) return;
     setActionVisible(false);
     const target = actionMsg;
-    // Optimistic
-    setMessages(prev => prev.map(m =>
-      m.id === target.id ? { ...m, isDeleted: true, text: '' } : m
-    ));
-    deleteChatMessage(tokenRef.current, target.id).catch(() => {
-      loadMessages(); // revert on failure
-    });
+    setMessages(prev => prev.map(m => m.id === target.id ? { ...m, isDeleted: true, text: '' } : m));
+    deleteChatMessage(tokenRef.current, target.id).catch(() => loadMessages());
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   const accent      = colors.accent;
   const inputRadius = getInputRadius(mood);
   const sendRadius  = getSendRadius(mood);
+  const moodLabel   = MOOD_LABELS[mood];
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background }]}>
 
       {/* ── HEADER ── */}
       <View style={[styles.header, {
-        backgroundColor: colors.background,
+        backgroundColor:   colors.background,
         borderBottomColor: colors.border,
-        paddingTop: insets.top + 8,
+        paddingTop:        insets.top + 8,
       }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={accent} />
@@ -392,7 +406,7 @@ export default function ConversationScreen() {
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <Text style={[styles.headerName, { color: colors.text }]}>
-              {params.name ?? 'Chat'}, 24
+              {params.name ?? 'Chat'}
             </Text>
             {mood === 'flow' && (
               <View style={[styles.flowBadge, { backgroundColor: accent + '20' }]}>
@@ -400,40 +414,26 @@ export default function ConversationScreen() {
               </View>
             )}
           </View>
-          <Text style={[styles.statusText, {
-            color:   mood === 'stalled' ? '#94A3B8' : accent,
-            opacity: mood === 'stalled' ? 0.7 : 1,
-          }]}>
-            {isOtherTyping ? 'typing...' : meta.statusLabel}
-          </Text>
+
+          {/* Mood pill — shows the current state from conversationState API */}
+          {moodLabel ? (
+            <View style={[styles.moodPill, { backgroundColor: accent + '20' }]}>
+              <Text style={[styles.moodPillText, { color: accent }]}>
+                {isOtherTyping ? '✍️ typing...' : moodLabel}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.statusText, { color: colors.subText }]}>
+              {isOtherTyping ? '✍️ typing...' : meta.statusLabel}
+            </Text>
+          )}
         </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={0}>
-
-        {/* ── MOOD TAB BAR ── */}
-        <View style={[styles.moodBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          {MOOD_TABS.map(tab => {
-            const isActive = mood === tab.key;
-            const tabColor = TAB_ACCENT[tab.key] ?? accent;
-            return (
-              <Pressable
-                key={tab.key}
-                onPress={() => switchMood(tab.key)}
-                style={[styles.moodTab, isActive && { borderBottomColor: tabColor, borderBottomWidth: 2.5 }]}
-              >
-                <Text style={[styles.moodTabText, { color: isActive ? tabColor : '#999' }]}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* ── ANIMATED CONTENT ── */}
         <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
 
-          {/* Loading state */}
+          {/* ── MESSAGES ── */}
           {loading ? (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color={accent} />
@@ -461,10 +461,9 @@ export default function ConversationScreen() {
                 </>
               }
               renderItem={({ item }) => {
-                const isMe = item.sender === 'me';
+                const isMe        = item.sender === 'me';
                 const bubbleStyle = getBubbleStyle(mood, isMe);
 
-                // Typing indicator bubble
                 if (item.isTyping) {
                   return (
                     <View style={[styles.messageRow, styles.rowThem]}>
@@ -476,18 +475,12 @@ export default function ConversationScreen() {
                   );
                 }
 
-                // Deleted message
                 if (item.isDeleted) {
                   return (
                     <View style={[styles.messageRow, isMe ? styles.rowMe : styles.rowThem]}>
-                      {!isMe && <Image source={LOGO} style={[styles.msgAvatar, mood === 'stalled' && { opacity: 0.35 }]} />}
-                      <View style={[
-                        styles.bubble, bubbleStyle,
-                        { backgroundColor: colors.bubbleOther, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
-                      ]}>
-                        <Text style={{ color: colors.subText, fontSize: 13, fontStyle: 'italic' }}>
-                          🗑 Message deleted
-                        </Text>
+                      {!isMe && <Image source={LOGO} style={styles.msgAvatar} />}
+                      <View style={[styles.bubble, bubbleStyle, { backgroundColor: colors.bubbleOther, borderWidth: 1, borderColor: colors.border }]}>
+                        <Text style={{ color: colors.subText, fontSize: 13, fontStyle: 'italic' }}>🗑 Message deleted</Text>
                       </View>
                     </View>
                   );
@@ -503,8 +496,7 @@ export default function ConversationScreen() {
                     )}
                     <View style={isMe ? { alignItems: 'flex-end' } : { alignItems: 'flex-start', flex: 1 }}>
                       <View style={[
-                        styles.bubble,
-                        bubbleStyle,
+                        styles.bubble, bubbleStyle,
                         { backgroundColor: isMe ? accent : colors.bubbleOther },
                         !isMe && mood === 'stalled' && { borderWidth: 1, borderColor: '#CBD5E1' },
                       ]}>
@@ -516,16 +508,12 @@ export default function ConversationScreen() {
                           {item.text}
                         </Text>
                       </View>
-
                       <View style={styles.timeLine}>
-                        {item.isEdited && (
-                          <Text style={[styles.editedLabel, { color: colors.subText }]}>edited · </Text>
-                        )}
+                        {item.isEdited && <Text style={[styles.editedLabel, { color: colors.subText }]}>edited · </Text>}
                         <Text style={[styles.timeText, { color: colors.subText }]}>{item.time}</Text>
                         {isMe && (
                           <Ionicons
-                            name="checkmark-done"
-                            size={13}
+                            name="checkmark-done" size={13}
                             color={mood === 'flow' ? accent : colors.subText}
                             style={{ marginLeft: 4 }}
                           />
@@ -538,34 +526,12 @@ export default function ConversationScreen() {
             />
           )}
 
-          {/* ── STALLED NUDGE ── */}
-          {mood === 'stalled' && (
-            <StalledNudge accent={accent} bgColor={colors.inputBg} />
+          {/* ── STALLED NUDGE (pinned above chips, visible without scroll) ── */}
+          {mood === 'stalled' && hasMatch && (
+            <StalledNudge accent={accent} bgColor={colors.inputBg} onAiPress={handleOpenSuggestions} />
           )}
 
-          {/* ── CHIPS ── */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={[styles.chipsRow, { backgroundColor: colors.background, borderTopColor: colors.border }]}
-            contentContainerStyle={styles.chipsContent}
-          >
-            {meta.chips.map(chip => (
-              <Pressable
-                key={chip}
-                style={[styles.chip, {
-                  backgroundColor: accent + '18',
-                  borderColor:     accent + '55',
-                  borderRadius:    mood === 'stalled' ? 8 : 999,
-                }]}
-                onPress={() => setInput(chip)}
-              >
-                <Text style={[styles.chipText, { color: accent }]}>{chip}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          {/* ── INPUT BAR ── */}
+          {/* ── EDIT BANNER ── */}
           {editingId && (
             <View style={[styles.editBanner, { backgroundColor: accent + '15', borderTopColor: colors.border }]}>
               <Ionicons name="create-outline" size={14} color={accent} />
@@ -576,11 +542,22 @@ export default function ConversationScreen() {
             </View>
           )}
 
+          {/* ── INPUT BAR ── */}
           <View style={[styles.inputBar, {
             backgroundColor: colors.inputBg,
             borderTopColor:  colors.border,
             paddingBottom:   insets.bottom + 10,
           }]}>
+            {/* ✨ AI Suggestions button */}
+            {hasMatch && !editingId && (
+              <Pressable
+                style={[styles.suggestBtn, { backgroundColor: accent + '20', borderColor: accent + '60' }]}
+                onPress={handleOpenSuggestions}
+              >
+                <Text style={[styles.suggestBtnText, { color: accent }]}>✨</Text>
+              </Pressable>
+            )}
+
             <TextInput
               style={[styles.input, {
                 color:           colors.text,
@@ -619,7 +596,48 @@ export default function ConversationScreen() {
         </Animated.View>
       </KeyboardAvoidingView>
 
-      {/* ── ACTION SHEET MODAL (edit / delete) ── */}
+      {/* ── AI SUGGESTIONS MODAL ── */}
+      <Modal
+        visible={suggestionsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSuggestionsVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setSuggestionsVisible(false)}>
+          <Pressable style={[styles.suggestSheet, { backgroundColor: colors.inputBg }]} onPress={() => {}}>
+            <View style={[styles.actionHandle, { backgroundColor: colors.border }]} />
+
+            <Text style={[styles.suggestTitle, { color: colors.text }]}>✨ AI Suggestions</Text>
+            <Text style={[styles.suggestSub, { color: colors.subText }]}>
+              Tap a suggestion to use it
+            </Text>
+
+            {suggestionsLoading ? (
+              <View style={styles.suggestLoading}>
+                <ActivityIndicator size="large" color={accent} />
+                <Text style={[styles.suggestLoadingText, { color: colors.subText }]}>
+                  Crafting suggestions…
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.suggestList}>
+                {suggestions.map((s, i) => (
+                  <Pressable
+                    key={i}
+                    style={[styles.suggestItem, { backgroundColor: accent + '12', borderColor: accent + '40' }]}
+                    onPress={() => handlePickSuggestion(s)}
+                  >
+                    <Text style={[styles.suggestItemText, { color: colors.text }]}>{s}</Text>
+                    <Ionicons name="arrow-up-circle" size={20} color={accent} style={{ marginLeft: 8 }} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── EDIT / DELETE ACTION SHEET ── */}
       <Modal
         visible={actionVisible}
         transparent
@@ -629,14 +647,11 @@ export default function ConversationScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setActionVisible(false)}>
           <Pressable style={[styles.actionSheet, { backgroundColor: colors.inputBg }]} onPress={() => {}}>
             <View style={[styles.actionHandle, { backgroundColor: colors.border }]} />
-
             <Pressable style={styles.actionRow} onPress={handleEdit}>
               <Ionicons name="create-outline" size={20} color={accent} />
               <Text style={[styles.actionLabel, { color: colors.text }]}>Edit message</Text>
             </Pressable>
-
             <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-
             <Pressable style={styles.actionRow} onPress={handleDelete}>
               <Ionicons name="trash-outline" size={20} color="#EF4444" />
               <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Delete message</Text>
@@ -653,24 +668,21 @@ export default function ConversationScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
 
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
-  backBtn:      { marginRight: 8 },
-  avatarWrap:   { marginRight: 10 },
-  headerAvatar: { width: 42, height: 42, borderRadius: 21 },
-  onlineDot:    { position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: 6, borderWidth: 2, borderColor: '#FFF' },
-  headerInfo:   { flex: 1 },
-  nameRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerName:   { fontSize: 15, fontWeight: '700' },
-  flowBadge:    { borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
-  flowBadgeText:{ fontSize: 12 },
-  statusText:   { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  header:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
+  backBtn:       { marginRight: 8 },
+  avatarWrap:    { marginRight: 10 },
+  headerAvatar:  { width: 42, height: 42, borderRadius: 21 },
+  onlineDot:     { position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: 6, borderWidth: 2, borderColor: '#FFF' },
+  headerInfo:    { flex: 1 },
+  nameRow:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerName:    { fontSize: 15, fontWeight: '700' },
+  flowBadge:     { borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+  flowBadgeText: { fontSize: 12 },
+  statusText:    { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  moodPill:      { alignSelf: 'flex-start', marginTop: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  moodPillText:  { fontSize: 11, fontWeight: '700' },
 
-  moodBar:     { flexDirection: 'row', borderBottomWidth: 1 },
-  moodTab:     { flex: 1, alignItems: 'center', paddingVertical: 9, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
-  moodTabText: { fontSize: 12, fontWeight: '600' },
-
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
+  loadingBox:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
   messagesList: { padding: 16, paddingBottom: 8 },
   dateSeparator:{ alignItems: 'center', marginBottom: 16 },
   datePill:     { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
@@ -683,24 +695,31 @@ const styles = StyleSheet.create({
 
   bubble:      { paddingHorizontal: 14, paddingVertical: 10 },
   messageText: { fontSize: 15, lineHeight: 22 },
-
-  timeLine:     { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  editedLabel:  { fontSize: 10, fontStyle: 'italic' },
-  timeText:     { fontSize: 10 },
-
-  chipsRow:     { borderTopWidth: 1, maxHeight: 52 },
-  chipsContent: { paddingHorizontal: 14, paddingVertical: 8, gap: 8, flexDirection: 'row' },
-  chip:         { paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1 },
-  chipText:     { fontSize: 12, fontWeight: '600' },
+  timeLine:    { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  editedLabel: { fontSize: 10, fontStyle: 'italic' },
+  timeText:    { fontSize: 10 },
 
   editBanner:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderTopWidth: 1 },
   editBannerText: { flex: 1, fontSize: 12, fontWeight: '600' },
   editCancel:     { padding: 4 },
 
-  inputBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1, gap: 10 },
-  input:    { flex: 1, fontSize: 15, maxHeight: 100, paddingVertical: 9, paddingHorizontal: 14, borderWidth: 1.5 },
-  sendBtn:  { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  inputBar:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1, gap: 8 },
+  suggestBtn:     { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  suggestBtnText: { fontSize: 18 },
+  input:          { flex: 1, fontSize: 15, maxHeight: 100, paddingVertical: 9, paddingHorizontal: 14, borderWidth: 1.5 },
+  sendBtn:        { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
+  // Suggestions modal
+  suggestSheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 40 },
+  suggestTitle:       { fontSize: 17, fontWeight: '700', marginBottom: 4 },
+  suggestSub:         { fontSize: 13, marginBottom: 20 },
+  suggestLoading:     { paddingVertical: 40, alignItems: 'center', gap: 14 },
+  suggestLoadingText: { fontSize: 14 },
+  suggestList:        { gap: 10 },
+  suggestItem:        { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1 },
+  suggestItemText:    { flex: 1, fontSize: 15, lineHeight: 22 },
+
+  // Shared modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   actionSheet:  { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 32 },
   actionHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },

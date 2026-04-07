@@ -503,6 +503,59 @@ export async function getTypingIndicator(
   return body as { match_id: string; typing_user_ids: string[] };
 }
 
+// ── POST /conversation-state ──────────────────────────────────────────────────
+
+export type ConversationMode = "discovery" | "flow" | "stalled";
+
+export type ConversationStateResponse = {
+  match_id: string;
+  mode: ConversationMode;
+  message_checkpoint: number;
+  signals: {
+    message_count: number;
+    last_message_gap_hours: number;
+    avg_reply_gap_minutes: number;
+    short_reply_ratio: number;
+    negative_keyword_count: number;
+  };
+};
+
+export async function getConversationState(
+  token: string,
+  match_id: string,
+): Promise<ConversationStateResponse> {
+  const res = await apiFetch(token, "/conversation-state", {
+    method: "POST",
+    body: JSON.stringify({ match_id }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /conversation-state failed (${res.status})`);
+  return body as ConversationStateResponse;
+}
+
+// ── POST /ai-suggestions ──────────────────────────────────────────────────────
+
+export type AiSuggestionsResponse = {
+  match_id: string;
+  context_type: "initial" | "chat";
+  mode: ConversationMode | null;
+  suggestions: string[];
+};
+
+export async function getAiSuggestions(
+  token: string,
+  match_id: string,
+  context_type: "initial" | "chat" = "chat",
+): Promise<AiSuggestionsResponse> {
+  const res = await apiFetch(token, "/ai-suggestions", {
+    method: "POST",
+    body: JSON.stringify({ match_id, context_type }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /ai-suggestions failed (${res.status})`);
+  return body as AiSuggestionsResponse;
+}
+
 // ── GET /nearby ───────────────────────────────────────────────────────────────
 
 export async function getNearby(token: string) {
