@@ -17,7 +17,7 @@ export default function AssistantHeader({ title, subtitle }: { title: string; su
 }
 
 const styles = StyleSheet.create({
-  container:  { alignItems: 'center' },
+  container:  { alignItems: 'center', marginBottom: 18 },
   iconCircle: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   title:      { fontSize: 28, fontWeight: '700' },
   subtitle:   { marginTop: 4, fontSize: 14 },
