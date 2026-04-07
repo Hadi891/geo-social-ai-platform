@@ -115,7 +115,18 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
          u.interests,
          p.image_url AS profile_photo_key,
          last_msg.message_text AS last_message,
-         last_msg.created_at AS last_message_time
+         last_msg.created_at  AS last_message_time,
+         (
+           SELECT COUNT(*)
+           FROM messages msg
+           WHERE msg.match_id   = m.id
+             AND msg.sender_id != $1
+             AND msg.deleted_at IS NULL
+             AND msg.created_at > COALESCE(
+               (SELECT last_read_at FROM match_reads WHERE match_id = m.id AND user_id = $1),
+               '1970-01-01'::timestamptz
+             )
+         )::int AS unread_count
        FROM matches m
        JOIN users u ON u.id = CASE
          WHEN m.user_a = $1 THEN m.user_b

@@ -382,6 +382,7 @@ export type Match = {
   profile_photo_url: string | null;
   last_message: string | null;
   last_message_time: string | null;
+  unread_count: number;
 };
 
 export type MatchesResponse = {
