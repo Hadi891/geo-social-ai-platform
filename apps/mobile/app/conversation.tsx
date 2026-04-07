@@ -39,8 +39,11 @@ type Message = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Postgres returns timestamps without Z — force UTC interpretation
+const parseUtc = (iso: string) => new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+
 const fmt = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  parseUtc(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 const getTime = () =>
   new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
