@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,7 +16,6 @@ import AssistantInputBar from '@/components/assistant/AssistantInputBar';
 import { useAuth } from '@/context/AuthContext';
 import { sendAssistantMessage } from '@repo/api';
 import { router } from 'expo-router';
-
 
 export type MessageType = {
   id: string;
@@ -49,48 +49,49 @@ const INITIAL_MESSAGES: MessageType[] = [
 ];
 
 export default function AssistantScreen() {
-    const { colors } = useTheme();
+  const { colors } = useTheme();
   const { getToken } = useAuth();
+
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<MessageType[]>(INITIAL_MESSAGES);
   const [loading, setLoading] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
-    const styles = StyleSheet.create({
-          keyboardContainer: {
-            flex: 1,
-          },
-          container: {
-            flex: 1,
-            backgroundColor: colors.background,
-          },
-          content: {
-            flex: 1,
-            paddingHorizontal: 18,
-            paddingTop: 12,
-            paddingBottom: 8,
-          },
-          messagesContainer: {
-            flex: 1,
-            marginTop: 18,
-          },
-          messagesContent: {
-            paddingBottom: 8,
-          },
-          suggestionsContainer: {
-            marginTop: 8,
-            marginBottom: 12,
-            flexGrow: 0,
-          },
-          suggestionsContent: {
-            paddingRight: 8,
-          },
-        });
+
+  const styles = StyleSheet.create({
+    keyboardContainer: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 18,
+      paddingTop: 12,
+      paddingBottom: 12,
+    },
+    messagesContainer: {
+      flex: 1,
+      marginTop: 18,
+    },
+    messagesContent: {
+      paddingBottom: 8,
+    },
+    suggestionsContainer: {
+      marginTop: 8,
+      marginBottom: 12,
+      flexGrow: 0,
+    },
+    suggestionsContent: {
+      paddingRight: 8,
+    },
+  });
 
   const handleSendMessage = async (text: string) => {
     const trimmedText = text.trim();
     if (!trimmedText || loading) return;
-
 
     const userMessage: MessageType = {
       id: createId(),
@@ -99,9 +100,9 @@ export default function AssistantScreen() {
       time: getCurrentTime(),
     };
 
-
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    Keyboard.dismiss();
     setLoading(true);
 
     try {
@@ -135,37 +136,42 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
     >
       <View style={styles.container}>
-        <TopBar title="Mingle Assistant" onLeftPress={() => router.navigate('/settings')} />
-
+        <TopBar
+          title="Mingle Assistant"
+          onLeftPress={() => router.navigate('/settings')}
+        />
 
         <View style={styles.content}>
-          <AssistantHeader
-            title="Mingle AI"
-            subtitle="Your radiant curator"
-          />
-
           <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesContainer}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={() =>
-              scrollViewRef.current?.scrollToEnd({ animated: true })
-            }
-          >
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-          </ScrollView>
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              contentContainerStyle={styles.messagesContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() =>
+                scrollViewRef.current?.scrollToEnd({ animated: true })
+              }
+            >
+              <AssistantHeader
+                title="Mingle AI"
+                subtitle="Your radiant curator"
+              />
+
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+            </ScrollView>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.suggestionsContent}
             style={styles.suggestionsContainer}
+            keyboardShouldPersistTaps="handled"
           >
             {SUGGESTIONS.map((suggestion) => (
               <SuggestionChip
@@ -181,7 +187,6 @@ export default function AssistantScreen() {
             onChangeText={setInput}
             onSend={() => handleSendMessage(input)}
             placeholder="Message Mingle AI..."
-            onPressAdd={() => {}}
           />
         </View>
       </View>
