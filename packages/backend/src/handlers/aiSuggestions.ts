@@ -7,7 +7,7 @@ import { ok, badRequest, unauthorized, notFound, forbidden, internalError } from
 import { logInfo, logError } from "../utils/logger";
 
 type ContextType = "initial" | "chat";
-type ConversationMode = "discovery" | "flow" | "stalled" | "tension" | "inactive";
+type ConversationMode = "discovery" | "flow" | "stalled";
 
 type AiSuggestionsBody = {
   match_id: string;
@@ -20,8 +20,7 @@ type MessageRow = {
   created_at: Date;
 };
 
-const INACTIVE_THRESHOLD_HOURS = 24; // basically dead — no messages for > 24 h
-const STALLED_THRESHOLD_HOURS  = 12; // slowing down or stuck — no messages for > 12 h
+const STALLED_THRESHOLD_HOURS = 12; // slowing down, stuck, or silent — no messages for > 12 h
 
 // ── Infer lightweight conversation mode from recent messages ─────────────────
 function inferMode(messages: MessageRow[], now: Date): ConversationMode {
@@ -33,17 +32,16 @@ function inferMode(messages: MessageRow[], now: Date): ConversationMode {
   const hoursSinceLast =
     (now.getTime() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
 
-  if (hoursSinceLast > INACTIVE_THRESHOLD_HOURS) return "inactive";
-  if (hoursSinceLast > STALLED_THRESHOLD_HOURS)  return "stalled";
+  if (hoursSinceLast > STALLED_THRESHOLD_HOURS) return "stalled";
 
-  // Simple tension heuristic: very short / cold recent replies
+  // Stalled heuristic: very short / cold recent replies
   const recentThree = nonDeleted.slice(-3).map(m => m.message_text.toLowerCase().trim());
-  const tensionPhrases = ["ok", "k", "sure", "fine", "whatever", "leave me alone", "stop", "no"];
-  const tensionHits = recentThree.filter(t =>
-    tensionPhrases.some(p => t === p || t.startsWith(p + " ") || t.endsWith(" " + p))
+  const stalledPhrases = ["ok", "k", "sure", "fine", "whatever", "leave me alone", "stop", "no"];
+  const stalledHits = recentThree.filter(t =>
+    stalledPhrases.some(p => t === p || t.startsWith(p + " ") || t.endsWith(" " + p))
   ).length;
 
-  if (tensionHits >= 2) return "tension";
+  if (stalledHits >= 2) return "stalled";
 
   return "flow";
 }
@@ -115,12 +113,8 @@ function buildPrompt(params: {
       `Conversation mode: ${mode}`,
     );
 
-    if (mode === "inactive") {
-      lines.push("The conversation has been silent for more than 24 hours and feels dormant. Suggest warm, low-pressure messages to gently bring it back to life — no guilt-tripping or pressure.");
-    } else if (mode === "stalled") {
-      lines.push("The conversation has slowed down or feels stuck. Suggest messages that re-open it naturally with a light touch.");
-    } else if (mode === "tension") {
-      lines.push("The conversation feels awkward, cold, or a bit negative. Suggest light, non-confrontational messages to ease the tone.");
+    if (mode === "stalled") {
+      lines.push("The conversation has lost momentum — it may be silent, slow, cold, or slightly disengaged. Suggest warm, low-pressure messages to gently re-open it with a light touch.");
     } else if (mode === "discovery") {
       lines.push("The conversation has just started. Suggest replies that build connection and curiosity.");
     } else {

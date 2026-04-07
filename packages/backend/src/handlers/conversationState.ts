@@ -8,9 +8,9 @@ import { logInfo, logWarn, logError } from "../utils/logger";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ConversationMode = "discovery" | "flow" | "stalled" | "tension" | "inactive";
+type ConversationMode = "discovery" | "flow" | "stalled";
 
-const VALID_MODES: ConversationMode[] = ["discovery", "flow", "stalled", "tension", "inactive"];
+const VALID_MODES: ConversationMode[] = ["discovery", "flow", "stalled"];
 
 type MessageRow = {
   sender_id: string;
@@ -105,18 +105,17 @@ async function inferModeWithAI(
 
   const systemPrompt = `You are a conversation state classifier for a dating app.
 The conversation has at least 5 messages and the last message is recent (under 24h ago).
-Classify it into exactly one of these three modes:
+Classify it into exactly one of these two modes:
 
 - flow     : healthy, active, engaged exchange — substantive messages, reasonable reply times
-- stalled  : losing momentum — replies are slow (avg gap > 60 min), very short, or disengaged
-- tension  : cold, rejecting, or hostile — one party is pushing back or clearly disengaging
+- stalled  : losing momentum, disengaged, cold, or hostile — slow replies, very short messages, or one party pushing back
 
 Rules:
 - If short_reply_ratio >= 0.8 AND avg_reply_gap_minutes >= 60 → strongly prefer "stalled"
-- If negative_keyword_count >= 2 → strongly prefer "tension"
+- If negative_keyword_count >= 2 → strongly prefer "stalled"
 - Prefer stability: keep the stored mode unless signals clearly justify a change.
 
-Respond with ONLY a JSON object: {"mode": "flow"} or {"mode": "stalled"} or {"mode": "tension"}`;
+Respond with ONLY a JSON object: {"mode": "flow"} or {"mode": "stalled"}`;
 
   const userContent = `Signals:
 - message_count: ${signals.message_count}
@@ -213,11 +212,11 @@ export async function handleConversationState(event: APIGatewayProxyEvent) {
 
     // Determine whether re-evaluation is needed
     const currentCheckpoint = Math.floor(message_count / CHECKPOINT_INTERVAL) * CHECKPOINT_INTERVAL;
-    const inactiveOverride = signals.last_message_gap_hours >= INACTIVE_THRESHOLD_H;
+    const stalledOverride = signals.last_message_gap_hours >= INACTIVE_THRESHOLD_H;
     const needsRecompute =
       storedState === null ||
       currentCheckpoint > storedCheckpoint ||
-      inactiveOverride;
+      stalledOverride;
 
     let finalMode: ConversationMode = storedMode ?? "discovery";
     let finalCheckpoint = storedCheckpoint;
@@ -227,7 +226,7 @@ export async function handleConversationState(event: APIGatewayProxyEvent) {
       if (signals.message_count === 0 || signals.message_count < CHECKPOINT_INTERVAL) {
         finalMode = "discovery";
       } else if (signals.last_message_gap_hours >= INACTIVE_THRESHOLD_H) {
-        finalMode = "inactive";
+        finalMode = "stalled";
       } else {
         // Judgment call: flow / stalled / tension — let gpt-4o-mini decide
         try {

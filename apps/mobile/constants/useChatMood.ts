@@ -1,8 +1,8 @@
-import { ChatMoodColors, ChatMood, ThemeMode } from './chatMood';
+import { ChatMoodColors, ChatMood } from './chatMood';
 import { useTheme } from '@/context/ThemeContext';
 
 export function useChatMood(mood: ChatMood) {
-  const { mode } = useTheme(); // light or dark
-
-  return ChatMoodColors[mode][mood];
+  const { mode } = useTheme();
+  const resolvedMode = mode === 'dark' ? 'dark' : 'light';
+  return ChatMoodColors[resolvedMode][mood];
 }
