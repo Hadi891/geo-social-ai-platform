@@ -300,21 +300,7 @@ export default function HomeScreen() {
       fontWeight: '700',
       color: colors.pink,
     },
-    intrusionButton: {
-      width: '100%',
-      marginBottom: 14,
-      backgroundColor: '#FFFFFF',
-      borderWidth: 1,
-      borderColor: '#D85AAF',
-      borderRadius: 16,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    intrusionButtonText: {
-      color: '#D85AAF',
-      fontSize: 15,
-      fontWeight: '800',
-    },
+
     postsContent: {
       paddingBottom: 18,
     },
@@ -393,12 +379,7 @@ export default function HomeScreen() {
                 <Text style={styles.addPostButtonText}>+ Add a post</Text>
               </Pressable>
 
-              <Pressable
-                style={styles.intrusionButton}
-                onPress={() => setIsIntrusionPopupVisible(true)}
-              >
-                <Text style={styles.intrusionButtonText}>Calculate intrusion score</Text>
-              </Pressable>
+
             </View>
           }
           renderItem={({ item }) => (

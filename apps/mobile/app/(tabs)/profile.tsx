@@ -4,6 +4,7 @@ import {
   Alert,
   ImageSourcePropType,
   LayoutChangeEvent,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
 import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation, getPosts, likePost, unlikePost, type Post } from '@repo/api';
 import PostCard from '@/components/home/PostCard';
+import IntrusionScorePopup from '@/components/intrusionScore/IntrusionScorePopup';
+import intrusionQuestions from '@/assets/intrusion.json';
 
 type UserProfile = {
   id: string;
@@ -85,6 +88,9 @@ export default function ProfileScreen() {
   const [editSectionY, setEditSectionY] = useState(0);
   const [showEditSection, setShowEditSection] = useState(false);
   const [shouldScrollToEdit, setShouldScrollToEdit] = useState(false);
+
+  const [isIntroversionPopupVisible, setIsIntroversionPopupVisible] = useState(false);
+
     const styles = StyleSheet.create({
       container: {
         flex: 1,
@@ -120,6 +126,22 @@ export default function ProfileScreen() {
         color: colors.subText,
         textAlign: 'center',
         paddingVertical: 20,
+      },
+      introversionButton: {
+        width: '100%',
+        marginTop: 14,
+        marginBottom: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#D85AAF',
+        borderRadius: 16,
+        paddingVertical: 14,
+        alignItems: 'center',
+      },
+      introversionButtonText: {
+        color: '#D85AAF',
+        fontSize: 15,
+        fontWeight: '800',
       },
     });
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -379,6 +401,13 @@ export default function ProfileScreen() {
           matches={profile.matches}
         />
 
+        <Pressable
+          style={styles.introversionButton}
+          onPress={() => setIsIntroversionPopupVisible(true)}
+        >
+          <Text style={styles.introversionButtonText}>Calculate your introversion score</Text>
+        </Pressable>
+
         <ProfileInfoSection
           fullName={getDisplayName(profile.firstName, profile.lastName)}
           age={displayedAge}
@@ -430,6 +459,12 @@ export default function ProfileScreen() {
 
         <LogoutButton onPress={handleLogout} />
       </ScrollView>
+
+      <IntrusionScorePopup
+              visible={isIntroversionPopupVisible}
+              onClose={() => setIsIntroversionPopupVisible(false)}
+              questions={intrusionQuestions as IntrusionQuestion[]}
+            />
     </View>
   );
 }
