@@ -38,11 +38,11 @@ import {
   type Story,
 } from '@repo/api';
 
-import IntrusionScorePopup, {
-  IntrusionQuestion,
-} from '@/components/intrusionScore/IntrusionScorePopup';
-import intrusionQuestions from '@/assets/intrusion.json';
-import IntrusionTestPrompt from '@/components/intrusionScore/IntrusionTestPrompt';
+import IntroversionScorePopup, {
+  IntroversionQuestion,
+} from '@/components/introversionScore/IntroversionScorePopup';
+import introversionQuestions from '@/assets/introversion.json';
+import IntroversionTestPrompt from '@/components/introversionScore/IntroversionTestPrompt';
 
 const LOGO_IMAGE = require('@/assets/images/logo.png');
 const PAGE_SIZE = 20;
@@ -70,10 +70,10 @@ export default function HomeScreen() {
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
   const [startGroupIndex, setStartGroupIndex] = useState(0);
 
-  // ── Intrusion score ────────────────────────────────────────────────────────
-  const [isIntrusionPopupVisible, setIsIntrusionPopupVisible] = useState(false);
-  const [hasDismissedIntrusionPrompt, setHasDismissedIntrusionPrompt] = useState(false);
-  const shouldShowIntrusionPrompt = !hasDismissedIntrusionPrompt && !isIntrusionPopupVisible;
+  // ── Introversion score ────────────────────────────────────────────────────────
+  const [isIntroversionPopupVisible, setIsIntroversionPopupVisible] = useState(false);
+  const [hasDismissedIntroversionPrompt, setHasDismissedIntroversionPrompt] = useState(false);
+  const shouldShowIntroversionPrompt = !hasDismissedIntroversionPrompt && !isIntroversionPopupVisible;
 
   // ── Fetch posts ────────────────────────────────────────────────────────────
   const fetchPosts = useCallback(async (offset = 0, append = false) => {
@@ -434,21 +434,21 @@ export default function HomeScreen() {
         onCommentAdded={handleCommentAdded}
       />
 
-      <IntrusionTestPrompt
-        visible={shouldShowIntrusionPrompt}
+      <IntroversionTestPrompt
+        visible={shouldShowIntroversionPrompt}
         onTakeIt={() => {
-          setHasDismissedIntrusionPrompt(true);
-          setIsIntrusionPopupVisible(true);
+          setHasDismissedIntroversionPrompt(true);
+          setIsIntroversionPopupVisible(true);
         }}
         onLater={() => {
-          setHasDismissedIntrusionPrompt(true);
+          setHasDismissedIntroversionPrompt(true);
         }}
       />
 
-      <IntrusionScorePopup
-        visible={isIntrusionPopupVisible}
-        onClose={() => setIsIntrusionPopupVisible(false)}
-        questions={intrusionQuestions as IntrusionQuestion[]}
+      <IntroversionScorePopup
+        visible={isIntroversionPopupVisible}
+        onClose={() => setIsIntroversionPopupVisible(false)}
+        questions={introversionQuestions as introversionQuestion[]}
       />
     </View>
   );

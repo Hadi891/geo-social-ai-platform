@@ -24,8 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
 import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation, getPosts, likePost, unlikePost, type Post } from '@repo/api';
 import PostCard from '@/components/home/PostCard';
-import IntrusionScorePopup from '@/components/intrusionScore/IntrusionScorePopup';
-import intrusionQuestions from '@/assets/intrusion.json';
+import IntroversionScorePopup from '@/components/introversionScore/IntroversionScorePopup';
+import introversionQuestions from '@/assets/introversion.json';
 
 type UserProfile = {
   id: string;
@@ -76,7 +76,7 @@ const getImageSource = (image: string | number): ImageSourcePropType =>
   typeof image === 'string' ? { uri: image } : image;
 
 export default function ProfileScreen() {
-    const { colors } = useTheme();
+  const { colors } = useTheme();
   const { getToken, doSignOut } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -133,13 +133,14 @@ export default function ProfileScreen() {
         marginBottom: 14,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#D85AAF',
+//         borderColor: '#D85AAF',
+        borderColor: colors.pink,
         borderRadius: 16,
         paddingVertical: 14,
         alignItems: 'center',
       },
       introversionButtonText: {
-        color: '#D85AAF',
+        color: colors.pink,
         fontSize: 15,
         fontWeight: '800',
       },
@@ -460,10 +461,10 @@ export default function ProfileScreen() {
         <LogoutButton onPress={handleLogout} />
       </ScrollView>
 
-      <IntrusionScorePopup
+      <IntroversionScorePopup
               visible={isIntroversionPopupVisible}
               onClose={() => setIsIntroversionPopupVisible(false)}
-              questions={intrusionQuestions as IntrusionQuestion[]}
+              questions={introversionQuestions as introversionQuestion[]}
             />
     </View>
   );

@@ -83,6 +83,7 @@ export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProp
   const styles = StyleSheet.create({
     wrapper: {
       backgroundColor: colors.background,
+//       backgroundColor: "#00FF00",
       paddingTop: 8,
     },
     container: {
@@ -112,6 +113,7 @@ export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProp
       height: 36,
       borderRadius: 18,
       backgroundColor: colors.pink,
+//       backgroundColor: "#00FF00",
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 4,
