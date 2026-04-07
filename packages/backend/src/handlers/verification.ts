@@ -262,6 +262,172 @@ async function rejectVerification(
   await db.query("UPDATE users SET is_verified = FALSE WHERE id = $1", [userId]);
 }
 
+// ── POST /verification/compare ───────────────────────────────────────────────
+// Takes a profile_key and selfie_key — no DB lookup, just CompareFaces.
+// Optionally marks the user as verified if the match passes.
+
+export async function handleVerificationCompare(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ profile_key: string; selfie_key: string }>(event.body);
+  if (!body || !isString(body.profile_key) || !isString(body.selfie_key))
+    return badRequest("profile_key and selfie_key are required");
+
+  const { profile_key, selfie_key } = body;
+
+  try {
+    const [profileObj, selfieObj] = await Promise.all([
+      s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: profile_key })),
+      s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: selfie_key })),
+    ]);
+    const profileBytes = await profileObj.Body!.transformToByteArray();
+    const selfieBytes  = await selfieObj.Body!.transformToByteArray();
+
+    let similarity = 0;
+    try {
+      const result = await rekognition.send(new CompareFacesCommand({
+        SourceImage: { Bytes: profileBytes },
+        TargetImage: { Bytes: selfieBytes },
+        SimilarityThreshold: 0,
+      }));
+      similarity = result.FaceMatches?.[0]?.Similarity ?? 0;
+    } catch (rekErr: any) {
+      if (rekErr?.name === "InvalidParameterException") {
+        return ok({ status: "rejected", similarity: 0, reason: "No face detected in one of the images. Please retake your selfie." });
+      }
+      throw rekErr;
+    }
+
+    logInfo("/verification/compare", { sub: claims.sub, similarity, threshold: FACE_MATCH_THRESHOLD });
+
+    if (similarity < FACE_MATCH_THRESHOLD) {
+      const reason = `Face did not match (${similarity.toFixed(1)}% similarity)`;
+      logWarn("/verification/compare", { sub: claims.sub, status: "rejected", reason });
+      return ok({ status: "rejected", similarity, reason });
+    }
+
+    // Best-effort: mark user verified in DB if profile exists
+    try {
+      const userResult = await db.query("SELECT id FROM users WHERE cognito_sub = $1", [claims.sub]);
+      if (userResult.rowCount && userResult.rowCount > 0) {
+        const userId = userResult.rows[0].id;
+        await db.query("UPDATE users SET is_verified = TRUE WHERE id = $1", [userId]);
+      }
+    } catch { /* ignore — verification still succeeded */ }
+
+    return ok({ status: "verified", similarity, reason: null });
+  } catch (err) {
+    logError("/verification/compare", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
+// ── POST /verification/face-check ────────────────────────────────────────────
+// Simpler alternative to the liveness flow: the client uploads a selfie and
+// this endpoint runs CompareFaces between the selfie and the saved profile photo.
+
+export async function handleVerificationFaceCheck(event: APIGatewayProxyEvent) {
+  const claims = getClaims(event);
+  if (!claims) return unauthorized();
+
+  const body = parseBody<{ selfie_key: string }>(event.body);
+  if (!body) return badRequest("Invalid or missing request body");
+
+  const { selfie_key } = body;
+  if (!isString(selfie_key)) return badRequest("selfie_key is required");
+
+  try {
+    const userResult = await db.query(
+      "SELECT id FROM users WHERE cognito_sub = $1",
+      [claims.sub]
+    );
+    if (userResult.rowCount === 0) return notFound("User profile not found.");
+    const userId: string = userResult.rows[0].id;
+
+    const photoResult = await db.query(
+      "SELECT image_url FROM photos WHERE user_id = $1 AND is_profile_photo = TRUE LIMIT 1",
+      [userId]
+    );
+    if (photoResult.rowCount === 0) {
+      return badRequest("You must set a profile photo before face verification.");
+    }
+    const profilePhotoUrl: string = photoResult.rows[0].image_url;
+    const profileKey = extractS3Key(profilePhotoUrl);
+
+    // Download both images from S3
+    const [profileObj, selfieObj] = await Promise.all([
+      s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: profileKey })),
+      s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: selfie_key })),
+    ]);
+    const profileBytes = await profileObj.Body!.transformToByteArray();
+    const selfieBytes  = await selfieObj.Body!.transformToByteArray();
+
+    // Compare faces
+    let similarity = 0;
+    try {
+      const compareResult = await rekognition.send(
+        new CompareFacesCommand({
+          SourceImage: { Bytes: profileBytes },
+          TargetImage: { Bytes: selfieBytes },
+          SimilarityThreshold: 0,
+        })
+      );
+      similarity = compareResult.FaceMatches?.[0]?.Similarity ?? 0;
+    } catch (rekErr: any) {
+      // InvalidParameterException means no face was detected in one of the images
+      if (rekErr?.name === "InvalidParameterException") {
+        const reason = "No face detected in one of the images. Please retake your selfie.";
+        await upsertVerification(userId, "rejected", profilePhotoUrl, null, null, reason);
+        return ok({ status: "rejected", similarity: 0, reason });
+      }
+      throw rekErr;
+    }
+
+    logInfo("/verification/face-check", { userId, similarity, threshold: FACE_MATCH_THRESHOLD });
+
+    if (similarity < FACE_MATCH_THRESHOLD) {
+      const reason = `Face match failed (similarity ${similarity.toFixed(1)}% < ${FACE_MATCH_THRESHOLD}%)`;
+      await upsertVerification(userId, "rejected", profilePhotoUrl, null, similarity, reason);
+      await db.query("UPDATE users SET is_verified = FALSE WHERE id = $1", [userId]);
+      logWarn("/verification/face-check", { userId, status: "rejected", reason });
+      return ok({ status: "rejected", similarity, reason });
+    }
+
+    await upsertVerification(userId, "verified", profilePhotoUrl, null, similarity, null);
+    await db.query("UPDATE users SET is_verified = TRUE WHERE id = $1", [userId]);
+    logInfo("/verification/face-check", { userId, status: "verified", similarity });
+
+    return ok({ status: "verified", similarity, reason: null });
+  } catch (err) {
+    logError("/verification/face-check", err, { sub: claims.sub });
+    return internalError();
+  }
+}
+
+async function upsertVerification(
+  userId: string,
+  status: "pending" | "verified" | "rejected",
+  profilePhotoUrl: string,
+  livenessSessionId: string | null,
+  faceSimilarity: number | null,
+  rejectionReason: string | null,
+) {
+  await db.query(
+    `INSERT INTO user_verifications
+       (user_id, status, profile_photo_url, liveness_session_id, face_similarity, rejection_reason, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET
+       status            = $2,
+       profile_photo_url = $3,
+       face_similarity   = $5,
+       rejection_reason  = $6,
+       verified_at       = CASE WHEN $2 = 'verified' THEN NOW() ELSE NULL END,
+       updated_at        = NOW()`,
+    [userId, status, profilePhotoUrl, livenessSessionId, faceSimilarity, rejectionReason]
+  );
+}
+
 // ── GET /verification/status ──────────────────────────────────────────────────
 
 export async function handleVerificationStatus(event: APIGatewayProxyEvent) {

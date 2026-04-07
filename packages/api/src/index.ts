@@ -328,6 +328,47 @@ export async function markStoryViewed(token: string, story_id: string): Promise<
   }
 }
 
+// ── Verification ─────────────────────────────────────────────────────────────
+
+export type CompareResult = {
+  status: "verified" | "rejected";
+  similarity: number;
+  reason: string | null;
+};
+
+export async function verificationCompare(
+  token: string,
+  profile_key: string,
+  selfie_key: string,
+): Promise<CompareResult> {
+  const res = await apiFetch(token, "/verification/compare", {
+    method: "POST",
+    body: JSON.stringify({ profile_key, selfie_key }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /verification/compare failed (${res.status})`);
+  return body as CompareResult;
+}
+
+export type FaceCheckResult = {
+  status: "verified" | "rejected";
+  similarity: number;
+  reason: string | null;
+};
+
+export async function verificationFaceCheck(
+  token: string,
+  selfie_key: string,
+): Promise<FaceCheckResult> {
+  const res = await apiFetch(token, "/verification/face-check", {
+    method: "POST",
+    body: JSON.stringify({ selfie_key }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /verification/face-check failed (${res.status})`);
+  return body as FaceCheckResult;
+}
+
 // ── GET /nearby ───────────────────────────────────────────────────────────────
 
 export async function getNearby(token: string) {

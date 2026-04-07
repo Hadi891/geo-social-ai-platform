@@ -10,7 +10,7 @@ import { handleCreatePost, handleGetPosts, handleAddComment, handleGetComments, 
 import { handleCreateStory, handleGetUserStories, handleGetMyStories, handleGetStoriesFeed, handleViewStory, handleDeleteStory } from "./src/handlers/stories";
 import { handleAiSuggestions } from "./src/handlers/aiSuggestions";
 import { handleAssistant } from "./src/handlers/assistant";
-import { handleVerificationStart, handleVerificationComplete, handleVerificationStatus } from "./src/handlers/verification";
+import { handleVerificationStart, handleVerificationComplete, handleVerificationStatus, handleVerificationFaceCheck, handleVerificationCompare } from "./src/handlers/verification";
 import { handleConversationState } from "./src/handlers/conversationState";
 import { notFound, badRequest } from "./src/utils/response";
 
@@ -52,6 +52,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (method === "POST" && path === "/assistant") return handleAssistant(event);
   if (method === "POST" && path === "/verification/start") return handleVerificationStart(event);
   if (method === "POST" && path === "/verification/complete") return handleVerificationComplete(event);
+  if (method === "POST" && path === "/verification/face-check") return handleVerificationFaceCheck(event);
+  if (method === "POST" && path === "/verification/compare") return handleVerificationCompare(event);
   if (method === "GET"  && path === "/verification/status") return handleVerificationStatus(event);
   if (method === "POST" && path === "/conversation-state") return handleConversationState(event);
 

@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -14,8 +14,14 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import { createUserProfile, updateLocation } from '@repo/api';
-
+import {
+  createUserProfile,
+  updateLocation,
+  getUploadUrl,
+  uploadToS3,
+  saveProfilePhoto,
+  verificationCompare,
+} from '@repo/api';
 
 function ageFromDOB(dob: string): number | undefined {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) return undefined;
@@ -33,9 +39,7 @@ export default function SignupStep4Screen() {
   const { signupData, updateSignupData, doSignUp, doConfirmSignUp, doSignIn, doResendCode } = useAuth();
   const [description, setDescription] = useState(signupData.description ?? '');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-
-  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [selfieUri, setSelfieUri] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
@@ -45,12 +49,10 @@ export default function SignupStep4Screen() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
-  // Start 60s cooldown when OTP modal opens
   useEffect(() => {
     if (otpVisible) setResendCooldown(60);
   }, [otpVisible]);
 
-  // Count down every second
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
@@ -69,6 +71,35 @@ export default function SignupStep4Screen() {
       setOtpError(e.message ?? 'Failed to resend code');
     } finally {
       setResendLoading(false);
+    }
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 1,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setSelectedImageUri(result.assets[0].uri);
+      setSelfieUri(null); // reset selfie when photo changes
+    }
+  };
+
+  const takeSelfie = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setApiError('Camera permission is required for verification.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      cameraType: ImagePicker.CameraType.front,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setSelfieUri(result.assets[0].uri);
     }
   };
 
@@ -105,6 +136,8 @@ export default function SignupStep4Screen() {
       await doConfirmSignUp(email, otpCode.trim());
       const token = await doSignIn(email, password);
       const age = dateOfBirth ? ageFromDOB(dateOfBirth) : undefined;
+
+      // 1. Create profile first
       await createUserProfile(token, {
         name: [firstName, lastName].filter(Boolean).join(' ') || undefined,
         age,
@@ -113,15 +146,37 @@ export default function SignupStep4Screen() {
         sexual_orientation: lookingFor || undefined,
         interests: interests?.length ? interests : undefined,
       });
+
+      // 2. Upload profile photo
+      let profileKey: string | null = null;
+      if (selectedImageUri) {
+        const { upload_url, key } = await getUploadUrl(token, 'profile-images', 'image/jpeg');
+        await uploadToS3(upload_url, selectedImageUri, 'image/jpeg');
+        await saveProfilePhoto(token, key);
+        profileKey = key;
+      }
+
+      // 3. Upload selfie + compare faces (if both exist)
+      if (profileKey && selfieUri) {
+        try {
+          const { upload_url: selfieUrl, key: selfieKey } = await getUploadUrl(token, 'verification-selfies', 'image/jpeg');
+          await uploadToS3(selfieUrl, selfieUri, 'image/jpeg');
+          await verificationCompare(token, profileKey, selfieKey);
+        } catch {
+          // verification failure is non-blocking — user still gets in
+        }
+      }
+
+      // 4. Location
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const loc = await Location.getCurrentPositionAsync({});
           await updateLocation(token, { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
         }
-      } catch (locErr: any) {
-        console.warn('Location error:', locErr?.message ?? locErr);
-      }
+      } catch { /* non-blocking */ }
+
+      setOtpVisible(false);
       router.replace('/home');
     } catch (e: any) {
       setOtpError(e.message ?? 'Verification failed');
@@ -130,23 +185,7 @@ export default function SignupStep4Screen() {
     }
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets?.length > 0) {
-      setSelectedImageUri(result.assets[0].uri);
-      setIsVerified(false);
-    } else {
-      Alert.alert('No image selected');
-    }
-  };
-
-
-  const hasImage = !!selectedImageUri;
+  const verifyStatus = selfieUri ? 'done' : selectedImageUri ? 'pending' : 'none';
 
   return (
     <View style={styles.container}>
@@ -155,17 +194,13 @@ export default function SignupStep4Screen() {
         style={styles.topEllipse}
         contentFit="contain"
       />
-
       <Image
         source={require('@/assets/images/bottomLeftEllipse.png')}
         style={styles.bottomEllipse}
         contentFit="contain"
       />
 
-      <Pressable
-        style={styles.backButton}
-        onPress={() => router.replace('/signup/step3')}
-      >
+      <Pressable style={styles.backButton} onPress={() => router.replace('/signup/step3')}>
         <Text style={styles.backButtonText}>←</Text>
       </Pressable>
 
@@ -186,57 +221,43 @@ export default function SignupStep4Screen() {
 
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Profile Picture</Text>
+            <View style={styles.photoRow}>
+              <Pressable style={styles.imagePlaceholder} onPress={pickImage}>
+                {selectedImageUri ? (
+                  <Image source={{ uri: selectedImageUri }} style={styles.selectedImage} contentFit="cover" />
+                ) : (
+                  <Ionicons name="image-outline" size={34} color="#9B9B9B" />
+                )}
+              </Pressable>
 
-            <Pressable style={styles.imagePlaceholder} onPress={pickImage}>
-              {selectedImageUri ? (
-                <Image
-                  source={{ uri: selectedImageUri }}
-                  style={styles.selectedImage}
-                  contentFit="cover"
-                />
-              ) : (
-                <Ionicons name="image-outline" size={34} color="#9B9B9B" />
+              {verifyStatus !== 'none' && (
+                <Pressable style={[styles.verifyBtn, verifyStatus === 'done' && styles.verifyBtnDone]} onPress={takeSelfie}>
+                  <Ionicons
+                    name={verifyStatus === 'done' ? 'checkmark-circle' : 'shield-checkmark-outline'}
+                    size={18}
+                    color={verifyStatus === 'done' ? '#4CAF50' : '#D3327C'}
+                  />
+                  <Text style={[styles.verifyBtnText, verifyStatus === 'done' && styles.verifyBtnTextDone]}>
+                    {verifyStatus === 'done' ? 'Verified' : 'Verify'}
+                  </Text>
+                </Pressable>
               )}
-            </Pressable>
-
-            <Pressable
-              disabled={!hasImage || isVerified}
-              style={[
-                styles.verifyButton,
-                (!hasImage || isVerified) && styles.verifyButtonDisabled,
-                isVerified && styles.verifyButtonVerified,
-              ]}
-              onPress={() => {
-                if (!hasImage || isVerified) return;
-                setVerifyModalVisible(true);
-              }}
-            >
-              <Text
-                style={[
-                  styles.verifyButtonText,
-                  !hasImage && styles.verifyButtonTextDisabled,
-                ]}
-              >
-                {isVerified ? 'Verified' : 'Verification'}
-              </Text>
-            </Pressable>
+            </View>
+            {verifyStatus === 'pending' && (
+              <Text style={styles.verifyHint}>Tap Verify to confirm your identity with a selfie</Text>
+            )}
           </View>
-
         </View>
 
-        {isVerified && (
-          <>
-            {apiError ? <Text style={styles.apiErrorText}>{apiError}</Text> : null}
-            <Pressable
-              style={[styles.signupButton, loading && styles.verifyButtonDisabled]}
-              onPress={handleSignUp}
-              disabled={loading}
-            >
-              <Text style={styles.signupButtonText}>{loading ? 'Please wait...' : 'Sign up →'}</Text>
-            </Pressable>
-          </>
-        )}
+        {apiError ? <Text style={styles.apiErrorText}>{apiError}</Text> : null}
 
+        <Pressable
+          style={[styles.signupButton, loading && styles.buttonDisabled]}
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          <Text style={styles.signupButtonText}>{loading ? 'Please wait...' : 'Sign up →'}</Text>
+        </Pressable>
 
         <View style={styles.pagination}>
           <View style={styles.dot} />
@@ -246,47 +267,12 @@ export default function SignupStep4Screen() {
         </View>
       </View>
 
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={verifyModalVisible}
-        onRequestClose={() => setVerifyModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setVerifyModalVisible(false)}
-        >
-          <Pressable style={styles.verifyModalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Verify</Text>
-            <Text style={styles.verifyModalText}>
-              Click verify to confirm this picture.
-            </Text>
-
-            <Pressable
-              style={styles.modalVerifyButton}
-              onPress={() => {
-                setIsVerified(true);
-                setVerifyModalVisible(false);
-              }}
-            >
-              <Text style={styles.modalVerifyButtonText}>Verify</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={otpVisible}
-        onRequestClose={() => setOtpVisible(false)}
-      >
+      {/* OTP Modal */}
+      <Modal transparent animationType="fade" visible={otpVisible} onRequestClose={() => setOtpVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setOtpVisible(false)}>
-          <Pressable style={styles.verifyModalCard} onPress={() => {}}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>Check your email</Text>
-            <Text style={styles.verifyModalText}>
+            <Text style={styles.modalText}>
               Enter the verification code sent to {signupData.email}.
             </Text>
             <TextInput
@@ -298,15 +284,17 @@ export default function SignupStep4Screen() {
               keyboardType="number-pad"
               maxLength={6}
             />
-            {otpError ? <Text style={styles.otpErrorText}>{otpError}</Text> : null}
+            {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
             <Pressable
-              style={[styles.modalVerifyButton, loading && styles.verifyButtonDisabled]}
+              style={[styles.primaryButton, loading && styles.buttonDisabled]}
               onPress={handleConfirmOtp}
               disabled={loading}
             >
-              <Text style={styles.modalVerifyButtonText}>
-                {loading ? 'Verifying...' : 'Confirm'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Confirm</Text>
+              )}
             </Pressable>
             <Pressable
               style={[styles.resendButton, (resendCooldown > 0 || resendLoading) && styles.resendButtonDisabled]}
@@ -320,285 +308,72 @@ export default function SignupStep4Screen() {
           </Pressable>
         </Pressable>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F6F6F6',
-  },
-  topEllipse: {
-    position: 'absolute',
-    top: 0,
-    left: -10,
-    width: 170,
-    height: 120,
-  },
-  bottomEllipse: {
-    position: 'absolute',
-    bottom: 0,
-    left: -20,
-    width: 170,
-    height: 150,
-  },
+  container: { flex: 1, backgroundColor: '#F6F6F6' },
+  topEllipse: { position: 'absolute', top: 0, left: -10, width: 170, height: 120 },
+  bottomEllipse: { position: 'absolute', bottom: 0, left: -20, width: 170, height: 150 },
   backButton: {
-    position: 'absolute',
-    top: 55,
-    left: 20,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', top: 55, left: 20, zIndex: 10,
+    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
   },
-  backButtonText: {
-    fontSize: 30,
-    color: '#8E1C62',
-    fontWeight: '900',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 36,
-    paddingTop: 150,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8E1C62',
-    textAlign: 'center',
-    marginBottom: 52,
-  },
-  form: {
-    width: '100%',
-  },
-  fieldBlock: {
-    marginBottom: 22,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#242424',
-    marginBottom: 8,
-  },
+  backButtonText: { fontSize: 30, color: '#8E1C62', fontWeight: '900' },
+  content: { flex: 1, paddingHorizontal: 36, paddingTop: 150, paddingBottom: 40 },
+  title: { fontSize: 18, fontWeight: '700', color: '#8E1C62', textAlign: 'center', marginBottom: 52 },
+  form: { width: '100%' },
+  fieldBlock: { marginBottom: 22 },
+  label: { fontSize: 14, fontWeight: '600', color: '#242424', marginBottom: 8 },
   input: {
-    height: 40,
-    backgroundColor: '#ECECEF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    fontSize: 13,
-    color: '#222',
+    height: 40, backgroundColor: '#ECECEF', borderRadius: 20,
+    paddingHorizontal: 16, fontSize: 13, color: '#222',
   },
-  selectBox: {
-    height: 40,
-    backgroundColor: '#ECECEF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectText: {
-    fontSize: 13,
-    color: '#222',
-    flex: 1,
-    marginRight: 10,
-  },
-  placeholderText: {
-    color: '#6F6F6F',
-  },
+  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 10 },
   imagePlaceholder: {
-    width: 76,
-    height: 76,
-    borderRadius: 8,
-    backgroundColor: '#D9D9D9',
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    marginBottom: 12,
-    overflow: 'hidden',
+    width: 76, height: 76, borderRadius: 8, backgroundColor: '#D9D9D9',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  selectedImage: {
-    width: '100%',
-    height: '100%',
+  selectedImage: { width: '100%', height: '100%' },
+  verifyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 999, borderWidth: 1.5, borderColor: '#D3327C',
   },
+  verifyBtnDone: { borderColor: '#4CAF50' },
+  verifyBtnText: { fontSize: 13, fontWeight: '600', color: '#D3327C' },
+  verifyBtnTextDone: { color: '#4CAF50' },
+  verifyHint: { fontSize: 11, color: '#9B9B9B', marginTop: 6 },
   signupButton: {
-    alignSelf: 'center',
-    marginTop: 10,
-    backgroundColor: '#D3327C',
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'center', marginTop: 10, backgroundColor: '#D3327C',
+    paddingHorizontal: 22, paddingVertical: 10, borderRadius: 999,
+    alignItems: 'center', justifyContent: 'center',
   },
-  signupButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 40,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: '#B9B9B9',
-  },
-  activeDot: {
-    backgroundColor: '#8E1C62',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    maxHeight: '60%',
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8E1C62',
-    marginBottom: 14,
-    textAlign: 'center',
-  },
-  optionRow: {
-    minHeight: 48,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  optionText: {
-    fontSize: 15,
-    color: '#222',
-  },
-  nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    marginTop: 12,
-    gap: 8,
-  },
-  nextText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111',
-  },
-  nextArrow: {
-    fontSize: 18,
-    color: '#111',
-    fontWeight: '700',
-  },
-  verifyButton: {
-    alignSelf: 'center',
-    marginTop: 4,
-    backgroundColor: '#D3327C',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-
-//     zIndex: 20,
-//     elevation: 5,
-  },
-  verifyButtonDisabled: {
-    backgroundColor: '#D3D3D3',
-  },
-  verifyButtonVerified: {
-    backgroundColor: '#8E1C62',
-  },
-  verifyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  verifyButtonTextDisabled: {
-    color: '#8A8A8A',
-  },
-  verifyModalCard: {
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    padding: 24,
-    alignItems: 'center',
-  },
-  verifyModalText: {
-    fontSize: 14,
-    color: '#444',
-    textAlign: 'center',
-    marginBottom: 18,
-  },
-  modalVerifyButton: {
-    backgroundColor: '#D3327C',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  modalVerifyButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  signupButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.5 },
+  pagination: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 40 },
+  dot: { width: 7, height: 7, borderRadius: 999, backgroundColor: '#B9B9B9' },
+  activeDot: { backgroundColor: '#8E1C62' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 24 },
+  modalCard: { borderRadius: 20, backgroundColor: '#FFFFFF', padding: 24, alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#8E1C62', marginBottom: 10, textAlign: 'center' },
+  modalText: { fontSize: 14, color: '#444', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
   otpInput: {
-    width: '100%',
-    height: 48,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 20,
-    letterSpacing: 6,
-    textAlign: 'center',
-    color: '#222',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    width: '100%', height: 48, backgroundColor: '#F0F0F0', borderRadius: 12,
+    paddingHorizontal: 16, fontSize: 20, letterSpacing: 6, textAlign: 'center',
+    color: '#222', marginBottom: 10, borderWidth: 1, borderColor: 'transparent',
   },
-  otpInputError: {
-    borderColor: '#D93025',
+  otpInputError: { borderColor: '#D93025' },
+  primaryButton: {
+    width: '100%', backgroundColor: '#D3327C', paddingVertical: 12,
+    borderRadius: 999, alignItems: 'center', marginBottom: 10,
   },
-  otpErrorText: {
-    color: '#D93025',
-    fontSize: 12,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  apiErrorText: {
-    color: '#D93025',
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  resendButton: {
-    marginTop: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  resendButtonDisabled: {
-    opacity: 0.5,
-  },
-  resendButtonText: {
-    fontSize: 13,
-    color: '#D3327C',
-    fontWeight: '600',
-  },
-  resendButtonTextDisabled: {
-    color: '#9B9B9B',
-  },
+  primaryButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  errorText: { color: '#D93025', fontSize: 12, marginBottom: 10, textAlign: 'center' },
+  apiErrorText: { color: '#D93025', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  resendButton: { marginTop: 12, paddingVertical: 8, alignItems: 'center' },
+  resendButtonDisabled: { opacity: 0.5 },
+  resendButtonText: { fontSize: 13, color: '#D3327C', fontWeight: '600' },
+  resendButtonTextDisabled: { color: '#9B9B9B' },
 });

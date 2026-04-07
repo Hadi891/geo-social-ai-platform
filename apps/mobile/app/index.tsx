@@ -3,7 +3,8 @@ import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import { cognitoStorage } from '@/lib/cognito';
+import { cognitoStorage, cognitoSignOut } from '@/lib/cognito';
+import { getMyProfile } from '@repo/api';
 
 export default function WelcomeScreen() {
   const { getToken } = useAuth();
@@ -12,8 +13,12 @@ export default function WelcomeScreen() {
   useEffect(() => {
     cognitoStorage.sync()
       .then(() => getToken())
+      .then((token) => getMyProfile(token))
       .then(() => router.replace('/home'))
-      .catch(() => setChecking(false));
+      .catch(() => {
+        cognitoSignOut();
+        setChecking(false);
+      });
   }, []);
 
   if (checking) {

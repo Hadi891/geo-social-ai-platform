@@ -3,6 +3,9 @@
     "name": "mobile",
     "slug": "mobile",
     "version": "1.0.0",
+    "updates": {
+      "enabled": false
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -14,8 +17,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
@@ -39,6 +40,12 @@
           "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to show you nearby people."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1dafc204-0337-40f8-9734-8b6724746b00"
+      }
+    }
   }
 }
