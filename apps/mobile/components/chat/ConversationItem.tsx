@@ -4,6 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 
 export type ConversationItemType = {
   id: string;
+  match_id?: string;
   name: string;
   imageSource: ImageSourcePropType;
   lastMessage: string;

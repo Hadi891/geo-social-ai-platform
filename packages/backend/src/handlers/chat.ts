@@ -21,9 +21,18 @@ type GetMessagesQuery = {
 const ALLOWED_MESSAGE_TYPES = ["text", "image", "ai_suggestion"];
 
 export async function handleChat(event: APIGatewayProxyEvent) {
-  if (event.httpMethod === "POST") return sendMessage(event);
-  if (event.httpMethod === "GET") return getMessages(event);
+  const method: string = event.httpMethod ?? (event as any).requestContext?.http?.method ?? "";
+  if (method === "POST") return handleSendMessage(event);
+  if (method === "GET")  return handleGetMessages(event);
   return badRequest("Method not allowed");
+}
+
+export async function handleSendMessage(event: APIGatewayProxyEvent) {
+  return sendMessage(event);
+}
+
+export async function handleGetMessages(event: APIGatewayProxyEvent) {
+  return getMessages(event);
 }
 
 async function sendMessage(event: APIGatewayProxyEvent) {

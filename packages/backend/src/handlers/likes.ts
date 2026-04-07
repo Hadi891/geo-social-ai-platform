@@ -1,10 +1,15 @@
 import type { APIGatewayProxyEvent } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { db } from "../db/connection";
 import { getClaims } from "../utils/auth";
 import { parseBody, isUUID } from "../utils/validation";
 import { ok, created, badRequest, unauthorized, notFound, tooManyRequests, internalError } from "../utils/response";
 import { logInfo, logError } from "../utils/logger";
+
+const s3     = new S3Client({ region: process.env["AWS_REGION"] ?? "eu-north-1" });
+const BUCKET = process.env["S3_BUCKET"] ?? "";
 
 export async function handleLike(event: APIGatewayProxyEvent) {
   const claims = getClaims(event);
@@ -108,7 +113,7 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
          u.age,
          u.bio,
          u.interests,
-         p.image_url AS profile_photo_url,
+         p.image_url AS profile_photo_key,
          last_msg.message_text AS last_message,
          last_msg.created_at AS last_message_time
        FROM matches m
@@ -121,6 +126,7 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
          SELECT message_text, created_at
          FROM messages
          WHERE match_id = m.id
+           AND deleted_at IS NULL
          ORDER BY created_at DESC
          LIMIT 1
        ) last_msg ON TRUE
@@ -129,10 +135,24 @@ export async function handleGetMatches(event: APIGatewayProxyEvent) {
       [userId]
     );
 
-    return ok({
-      count: result.rows.length,
-      matches: result.rows,
-    });
+    // Generate presigned URLs for profile photos
+    const matches = await Promise.all(
+      result.rows.map(async (row) => {
+        let profile_photo_url: string | null = null;
+        if (row.profile_photo_key && BUCKET) {
+          try {
+            const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: row.profile_photo_key });
+            profile_photo_url = await getSignedUrl(s3, cmd, { expiresIn: 3600 });
+          } catch {
+            // leave null if signing fails
+          }
+        }
+        const { profile_photo_key: _, ...rest } = row;
+        return { ...rest, profile_photo_url };
+      })
+    );
+
+    return ok({ count: matches.length, matches });
   } catch (err) {
     logError("/matches", err, { sub: claims.sub });
     return internalError();

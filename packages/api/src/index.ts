@@ -369,6 +369,139 @@ export async function verificationFaceCheck(
   return body as FaceCheckResult;
 }
 
+// ── GET /matches ──────────────────────────────────────────────────────────────
+
+export type Match = {
+  match_id: string;
+  matched_at: string;
+  id: string;
+  name: string | null;
+  age: number | null;
+  bio: string | null;
+  interests: string[] | null;
+  profile_photo_url: string | null;
+  last_message: string | null;
+  last_message_time: string | null;
+};
+
+export type MatchesResponse = {
+  count: number;
+  matches: Match[];
+};
+
+export async function getMatches(token: string): Promise<MatchesResponse> {
+  const res = await apiFetch(token, "/matches", { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /matches failed (${res.status})`);
+  return body as MatchesResponse;
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export type ChatMessage = {
+  id: string;
+  match_id: string;
+  sender_id: string;
+  message_text: string | null;
+  message_type: string;
+  created_at: string;
+  updated_at: string | null;
+  deleted_at: string | null;
+  is_deleted: boolean;
+  is_edited: boolean;
+};
+
+export type GetMessagesResponse = {
+  match_id: string;
+  count: number;
+  messages: ChatMessage[];
+};
+
+export async function getMessages(
+  token: string,
+  match_id: string,
+  opts: { limit?: number; before?: string } = {},
+): Promise<GetMessagesResponse> {
+  const params = new URLSearchParams({ match_id });
+  if (opts.limit)  params.set("limit",  String(opts.limit));
+  if (opts.before) params.set("before", opts.before);
+  const res = await apiFetch(token, `/chat?${params}`, { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /chat failed (${res.status})`);
+  return body as GetMessagesResponse;
+}
+
+export async function sendChatMessage(
+  token: string,
+  match_id: string,
+  message_text: string,
+): Promise<ChatMessage> {
+  const res = await apiFetch(token, "/chat", {
+    method: "POST",
+    body: JSON.stringify({ match_id, message_text, message_type: "text" }),
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `POST /chat failed (${res.status})`);
+  return body as ChatMessage;
+}
+
+export async function markChatRead(token: string, match_id: string): Promise<void> {
+  const res = await apiFetch(token, "/chat/read", {
+    method: "POST",
+    body: JSON.stringify({ matchId: match_id }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `POST /chat/read failed (${res.status})`);
+  }
+}
+
+export async function editChatMessage(
+  token: string,
+  message_id: string,
+  message_text: string,
+): Promise<void> {
+  const res = await apiFetch(token, "/chat/message", {
+    method: "PATCH",
+    body: JSON.stringify({ message_id, message_text }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `PATCH /chat/message failed (${res.status})`);
+  }
+}
+
+export async function deleteChatMessage(
+  token: string,
+  message_id: string,
+): Promise<void> {
+  const res = await apiFetch(token, "/chat/message", {
+    method: "DELETE",
+    body: JSON.stringify({ message_id }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as Record<string, any>;
+    throw new Error(body.error ?? body.message ?? `DELETE /chat/message failed (${res.status})`);
+  }
+}
+
+export async function postTypingIndicator(token: string, match_id: string): Promise<void> {
+  await apiFetch(token, "/chat/typing", {
+    method: "POST",
+    body: JSON.stringify({ match_id }),
+  }).catch(() => {/* non-critical, swallow errors */});
+}
+
+export async function getTypingIndicator(
+  token: string,
+  match_id: string,
+): Promise<{ match_id: string; typing_user_ids: string[] }> {
+  const res = await apiFetch(token, `/chat/typing?match_id=${match_id}`, { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /chat/typing failed (${res.status})`);
+  return body as { match_id: string; typing_user_ids: string[] };
+}
+
 // ── GET /nearby ───────────────────────────────────────────────────────────────
 
 export async function getNearby(token: string) {
