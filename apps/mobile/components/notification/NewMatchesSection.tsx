@@ -5,9 +5,12 @@ import { NewMatch } from './types';
 
 type Props = {
   matches: NewMatch[];
+  onMatchPress?: (match: NewMatch) => void;
 };
 
-export default function NewMatchesSection({ matches }: Props) {
+export default function NewMatchesSection({ matches, onMatchPress }: Props) {
+  if (matches.length === 0) return null;
+
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
@@ -23,7 +26,11 @@ export default function NewMatchesSection({ matches }: Props) {
         contentContainerStyle={styles.listContent}
       >
         {matches.map((item) => (
-          <NewMatchItem key={item.id} item={item} />
+          <NewMatchItem
+            key={item.id}
+            item={item}
+            onPress={() => onMatchPress?.(item)}
+          />
         ))}
       </ScrollView>
     </View>

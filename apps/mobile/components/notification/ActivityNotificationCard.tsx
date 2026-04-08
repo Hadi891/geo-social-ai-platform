@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationActivity } from './types';
 import { formatNotificationTime } from './formatNotificationTime';
@@ -7,28 +7,29 @@ import { getNotificationText } from './getNotificationText';
 
 type Props = {
   item: NotificationActivity;
+  onPress?: () => void;
 };
 
-export default function ActivityNotificationCard({ item }: Props) {
+export default function ActivityNotificationCard({ item, onPress }: Props) {
   const badgeIcon =
-    item.type === 'like'
+    item.type === 'like_profile' || item.type === 'like_post'
       ? 'heart'
       : item.type === 'match'
       ? 'sparkles'
       : 'chatbubble';
 
+  const badgeStyle =
+    item.type === 'like_profile' || item.type === 'like_post'
+      ? styles.likeBadge
+      : item.type === 'match'
+      ? styles.matchBadge
+      : styles.commentBadge;
+
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.avatarWrapper}>
         <Image source={item.avatar} style={styles.avatar} />
-        <View
-          style={[
-            styles.badge,
-            item.type === 'like' && styles.likeBadge,
-            item.type === 'match' && styles.matchBadge,
-            item.type === 'message' && styles.messageBadge,
-          ]}
-        >
+        <View style={[styles.badge, badgeStyle]}>
           <Ionicons name={badgeIcon} size={10} color="#FFFFFF" />
         </View>
       </View>
@@ -37,12 +38,11 @@ export default function ActivityNotificationCard({ item }: Props) {
         <Text style={styles.message}>
           {getNotificationText(item)}
         </Text>
-
         <Text style={styles.time}>{formatNotificationTime(item.createdAt)}</Text>
       </View>
 
       <View style={styles.dot} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   matchBadge: {
     backgroundColor: '#9B59D0',
   },
-  messageBadge: {
+  commentBadge: {
     backgroundColor: '#A86B3C',
   },
   content: {

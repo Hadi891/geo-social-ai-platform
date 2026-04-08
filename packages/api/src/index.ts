@@ -564,3 +564,55 @@ export async function getNearby(token: string) {
   if (!res.ok) throw new Error(body.message ?? `GET /nearby failed (${res.status})`);
   return body;
 }
+
+// ── GET /notifications ───────────────────────────────────────────────────────
+
+export type NotificationMatch = {
+  match_id: string;
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
+export type NotificationActivity = {
+  type: "like_profile" | "like_post" | "comment" | "match";
+  actor_id: string;
+  actor_name: string | null;
+  actor_avatar_url: string | null;
+  extra_text: string | null;
+  ref_id: string | null;
+  created_at: string;
+};
+
+export type NotificationsResponse = {
+  matches: NotificationMatch[];
+  activities: NotificationActivity[];
+};
+
+export async function getNotifications(token: string): Promise<NotificationsResponse> {
+  const res = await apiFetch(token, "/notifications", { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /notifications failed (${res.status})`);
+  return body as NotificationsResponse;
+}
+
+// ── GET /notifications/liker-profile ─────────────────────────────────────────
+
+export type LikerProfile = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  bio: string | null;
+  avatar_url: string | null;
+  distance_m: number | null;
+  common_interests: string[];
+  other_interests: string[];
+  compatibility: number;
+};
+
+export async function getLikerProfile(token: string, likerId: string): Promise<LikerProfile> {
+  const res = await apiFetch(token, `/notifications/liker-profile?liker_id=${likerId}`, { method: "GET" });
+  const body = await res.json().catch(() => ({})) as Record<string, any>;
+  if (!res.ok) throw new Error(body.error ?? body.message ?? `GET /notifications/liker-profile failed (${res.status})`);
+  return body as LikerProfile;
+}

@@ -1,14 +1,15 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NewMatch } from './types';
 
 type Props = {
   item: NewMatch;
+  onPress?: () => void;
 };
 
-export default function NewMatchItem({ item }: Props) {
+export default function NewMatchItem({ item, onPress }: Props) {
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={onPress}>
       <View style={styles.outerRing}>
         <View style={styles.innerRing}>
           <Image source={item.avatar} style={styles.avatar} />
@@ -18,7 +19,7 @@ export default function NewMatchItem({ item }: Props) {
       <Text numberOfLines={1} style={styles.name}>
         {item.name}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
