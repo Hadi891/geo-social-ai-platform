@@ -1,23 +1,23 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-interface IntrusionTestPromptProps {
+interface IntroversionTestPromptProps {
   visible: boolean;
   onTakeIt: () => void;
   onLater: () => void;
 }
 
-export default function IntrusionTestPrompt({
+export default function IntroversionTestPrompt({
   visible,
   onTakeIt,
   onLater,
-}: IntrusionTestPromptProps) {
+}: IntroversionTestPromptProps) {
   if (!visible) return null;
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.card}>
-        <Text style={styles.title}>Take your intrusion test</Text>
+        <Text style={styles.title}>Take your introversion test</Text>
         <Text style={styles.description}>
           Answer a few quick questions to calculate your score.
         </Text>

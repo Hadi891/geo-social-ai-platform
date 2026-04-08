@@ -8,16 +8,16 @@ import {
   View,
 } from 'react-native';
 
-export type IntrusionQuestion = {
+export type IntroversionQuestion = {
   id: number | string;
   question: string;
   options: Record<string, string>;
 };
 
-interface IntrusionScorePopupProps {
+interface IntroversionScorePopupProps {
   visible: boolean;
   onClose: () => void;
-  questions: IntrusionQuestion[];
+  questions: IntroversionQuestion[];
 }
 
 const ORDERED_OPTION_KEYS = ['A', 'B', 'C', 'D'];
@@ -35,7 +35,7 @@ function getOrderedOptions(options: Record<string, string>) {
 }
 
 function getOptionScore(
-  question: IntrusionQuestion,
+  question: IntroversionQuestion,
   selectedOptionKey?: string
 ): number {
   if (!selectedOptionKey) return 0;
@@ -46,11 +46,11 @@ function getOptionScore(
   return optionIndex >= 0 ? optionIndex : 0;
 }
 
-export default function IntrusionScorePopup({
+export default function IntroversionScorePopup({
   visible,
   onClose,
   questions,
-}: IntrusionScorePopupProps) {
+}: IntroversionScorePopupProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResult, setShowResult] = useState(false);
@@ -119,7 +119,7 @@ export default function IntrusionScorePopup({
       <Modal visible={visible} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.card}>
-            <Text style={styles.title}>Intrusion Score</Text>
+            <Text style={styles.title}>Introversion Score</Text>
             <Text style={styles.emptyText}>No questions found.</Text>
             <Pressable style={styles.primaryButton} onPress={handleClose}>
               <Text style={styles.primaryButtonText}>Close</Text>
@@ -135,7 +135,7 @@ export default function IntrusionScorePopup({
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Intrusion Score</Text>
+            <Text style={styles.title}>Introversion Score</Text>
 
             <Pressable onPress={handleClose} hitSlop={10}>
               <Text style={styles.closeText}>✕</Text>
@@ -217,7 +217,7 @@ export default function IntrusionScorePopup({
           ) : (
             <>
              <View style={styles.resultBox}>
-               <Text style={styles.resultTitle}>Your intrusion score</Text>
+               <Text style={styles.resultTitle}>Your introversion score</Text>
                <Text style={styles.resultScore}>{finalScore}%</Text>
                <Text style={styles.resultLabel}>{resultLabel}</Text>
              </View>

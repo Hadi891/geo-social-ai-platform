@@ -4,6 +4,7 @@ import {
   Alert,
   ImageSourcePropType,
   LayoutChangeEvent,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import * as Location from 'expo-location';
 import { getMyProfile, createUserProfile, getUploadUrl, uploadToS3, saveProfilePhoto, getMyLocation, getPosts, likePost, unlikePost, type Post } from '@repo/api';
 import PostCard from '@/components/home/PostCard';
+import IntroversionScorePopup from '@/components/introversionScore/IntroversionScorePopup';
+import introversionQuestions from '@/assets/introversion.json';
 
 type UserProfile = {
   id: string;
@@ -73,7 +76,7 @@ const getImageSource = (image: string | number): ImageSourcePropType =>
   typeof image === 'string' ? { uri: image } : image;
 
 export default function ProfileScreen() {
-    const { colors } = useTheme();
+  const { colors } = useTheme();
   const { getToken, doSignOut } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -85,6 +88,9 @@ export default function ProfileScreen() {
   const [editSectionY, setEditSectionY] = useState(0);
   const [showEditSection, setShowEditSection] = useState(false);
   const [shouldScrollToEdit, setShouldScrollToEdit] = useState(false);
+
+  const [isIntroversionPopupVisible, setIsIntroversionPopupVisible] = useState(false);
+
     const styles = StyleSheet.create({
       container: {
         flex: 1,
@@ -120,6 +126,23 @@ export default function ProfileScreen() {
         color: colors.subText,
         textAlign: 'center',
         paddingVertical: 20,
+      },
+      introversionButton: {
+        width: '100%',
+        marginTop: 14,
+        marginBottom: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+//         borderColor: '#D85AAF',
+        borderColor: colors.pink,
+        borderRadius: 16,
+        paddingVertical: 14,
+        alignItems: 'center',
+      },
+      introversionButtonText: {
+        color: colors.pink,
+        fontSize: 15,
+        fontWeight: '800',
       },
     });
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -379,6 +402,13 @@ export default function ProfileScreen() {
           matches={profile.matches}
         />
 
+        <Pressable
+          style={styles.introversionButton}
+          onPress={() => setIsIntroversionPopupVisible(true)}
+        >
+          <Text style={styles.introversionButtonText}>Calculate your introversion score</Text>
+        </Pressable>
+
         <ProfileInfoSection
           fullName={getDisplayName(profile.firstName, profile.lastName)}
           age={displayedAge}
@@ -430,6 +460,12 @@ export default function ProfileScreen() {
 
         <LogoutButton onPress={handleLogout} />
       </ScrollView>
+
+      <IntroversionScorePopup
+              visible={isIntroversionPopupVisible}
+              onClose={() => setIsIntroversionPopupVisible(false)}
+              questions={introversionQuestions as introversionQuestion[]}
+            />
     </View>
   );
 }
